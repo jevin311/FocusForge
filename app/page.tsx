@@ -51,10 +51,16 @@ export default function Home() {
   }
 
   return (
-    <main className="flex flex-col items-center justify-center min-h-screen bg-[#0C0B09] px-4">
+    <main className="flex flex-col items-center justify-center min-h-screen bg-[var(--bg-base)] px-4">
+      
+      <h1 className="text-4xl font-bold mb-2">
+        <span className="text-[var(--text-primary)]">Focus</span>
+        <span className="text-[var(--accent-orange)]">Forge</span>
+      </h1>
 
-      <h1 className="text-4xl font-bold text-[#EDE5D2] mb-2">FocusForge</h1>
-      <p className="text-[#6A6058] mb-8">Your focus, forged daily.</p>
+      <p className="text-[var(--text-muted)] mb-8">
+        Your focus, forged daily.
+      </p>
 
       <div className="w-full max-w-sm">
 
@@ -81,7 +87,7 @@ export default function Home() {
         <div className="flex justify-end mb-6">
           <Link
             href="/forgot-password"
-            className="text-sm text-[#FF8230] hover:text-[#D45618]"
+            className="text-sm text-[var(--accent-orange)] hover:text-[var(--accent-dim)]"
           >
             Forgot password?
           </Link>
@@ -92,18 +98,21 @@ export default function Home() {
         </Button>
 
         <div className="flex items-center gap-3 my-4">
-          <div className="flex-1 h-px bg-[#2A2820]" />
-          <span className="text-[#3C3628] text-sm">or</span>
-          <div className="flex-1 h-px bg-[#2A2820]" />
+          <div className="flex-1 h-px bg-[var(--border-subtle)]" />
+          <span className="text-[var(--text-faint)] text-sm">or</span>
+          <div className="flex-1 h-px bg-[var(--border-subtle)]" />
         </div>
 
         <Button onClick={handleGoogleLogin} variant="outline">
           Continue with Google
         </Button>
 
-        <p className="text-center text-[#6A6058] text-sm mt-6">
+        <p className="text-center text-[var(--text-muted)] text-sm mt-6">
           No account yet?{' '}
-          <Link href="/signup" className="text-[#FF8230] hover:text-[#D45618]">
+          <Link
+            href="/signup"
+            className="text-[var(--accent-orange)] hover:text-[var(--accent-dim)]"
+          >
             Sign up
           </Link>
         </p>
