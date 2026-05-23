@@ -7,6 +7,8 @@ import { useRouter } from 'next/navigation'
 import Button from '@/components/ui/Button'
 import Input from '@/components/ui/Input'
 
+
+//login page function
 export default function Home() {
   const supabase = createClient()
   const router = useRouter()
@@ -16,13 +18,13 @@ export default function Home() {
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
 
+  //2 different login methods, first is email password
   async function handleEmailLogin() {
     setLoading(true)
     setError('')
 
     const { error } = await supabase.auth.signInWithPassword({
-      email,
-      password
+      email, password
     })
 
     if (error) {
@@ -40,7 +42,9 @@ export default function Home() {
     router.push('/dashboard')
   }
 
+  //second method is using google
   async function handleGoogleLogin() {
+    //use supabase 3rd party OAuth
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
