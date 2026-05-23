@@ -15,13 +15,13 @@ export default function Input({
 }: InputProps) {
     return (
         <div className="mb-4">
-            <label className="block text-[#9A9080] text-sm mb-1">{label}</label>
+            <label className="block text-sm text-[var(--text-muted)] mb-1">{label}</label>
             <input
                 type={type}
                 value={value}
                 onChange={onChange}
                 placeholder={placeholder}
-                className="w-full px-4 py-3 rounded-lg bg-[#1A1814] text-[#EDE5D2] border border-[#2A2820] focus:outline-none focus:border-[#FF8230]"
+                className="w-full px-4 py-3 rounded-lg bg-[var(--bg-surface)] text-[var(--text-primary)] border border-[var(--border-input)] focus:border-[var(--accent-orange)] focus:outline-none transition-colors placeholder:text-[var(--text-faint)]"
             />
         </div>
     )

@@ -11,16 +11,20 @@
   --bg-base:        #0e0c0c;                   
   --bg-warm:        #130d09;                    
   --bg-card:        rgba(255, 255, 255, 0.025); /* card background (abit lighter) */
+  --bg-surface:     rgba(255, 255, 255, 0.05); /* slightly lighter than cards for input */
+  --bg-overlay:     rgba(0, 0, 0, 0.6); /* modals and overlay */
 
   /* Borders */
   --border-subtle:  rgba(255, 255, 255, 0.07);  /* barely visible border */
   --border-warm:    rgba(249, 115, 22, 0.3);    /* orange-tinted border */
+  --border-input:   rgba(255, 255, 255, 0.12); /* input field borders */
 
   /* Accent colours */
   --accent-orange:  #f97316;   /* main orange — For our buttons, highlights etc */
   --accent-dim:     #c2410c;   /* darker orange — For the flame gradients */
   --accent-purple:  #818cf8;   /* purple — Deep Focus mode */
   --accent-green:   #34d399;   /* green — Research mode */
+
 
   /* Text colours */
   --text-primary:   #ffffff;                    

@@ -6,6 +6,8 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import Button from '@/components/ui/Button'
 import Input from '@/components/ui/Input'
+import AuthHeader from '@/components/ui/AuthHeader'
+import { toast } from 'sonner'
 
 
 //login page function
@@ -15,13 +17,11 @@ export default function Home() {
 
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
-  const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
 
   //2 different login methods, first is email password
   async function handleEmailLogin() {
     setLoading(true)
-    setError('')
 
     const { error } = await supabase.auth.signInWithPassword({
       email, password
@@ -29,16 +29,17 @@ export default function Home() {
 
     if (error) {
       if (error.message.includes('Invalid login credentials')) {
-        setError('Incorrect email or password.')
+        toast.error('Incorrect email or password.')
       } else if (error.message.includes('Email not confirmed')) {
-        setError('Please verify your email before logging in')
+        toast.error('Please verify your email before logging in')
       } else {
-        setError(error.message)
+        toast.error(error.message)
       }
       setLoading(false)
       return
     }
 
+    toast.success("Time to forge!")
     router.push('/dashboard')
   }
 
@@ -51,26 +52,15 @@ export default function Home() {
         redirectTo: `${window.location.origin}/auth/callback`
       }
     })
-    if (error) setError(error.message)
+    if (error) toast.error(error.message)
   }
 
   return (
     <main className="flex flex-col items-center justify-center min-h-screen bg-[var(--bg-base)] px-4">
-      
-      <h1 className="text-4xl font-bold mb-2">
-        <span className="text-[var(--text-primary)]">Focus</span>
-        <span className="text-[var(--accent-orange)]">Forge</span>
-      </h1>
 
-      <p className="text-[var(--text-muted)] mb-8">
-        Your focus, forged daily.
-      </p>
+      <AuthHeader />
 
       <div className="w-full max-w-sm">
-
-        {error && (
-          <p className="text-red-400 text-sm text-center mb-4">{error}</p>
-        )}
 
         <Input
           label="Email"

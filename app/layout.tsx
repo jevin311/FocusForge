@@ -1,4 +1,5 @@
 import "./globals.css";
+import { Toaster } from "sonner"
 
 export const metadata = {
   title: 'FocusForge',
@@ -10,6 +11,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="en">
       <body>
         {children}
+        <Toaster position="top-center" richColors theme="dark" />
       </body>
     </html>
   )
