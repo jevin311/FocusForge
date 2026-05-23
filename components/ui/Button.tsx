@@ -1,3 +1,4 @@
+//ensure type safety of the button
 interface ButtonProps {
     onClick?: () => void
     loading?: boolean
@@ -6,6 +7,7 @@ interface ButtonProps {
     variant?: 'primary' | 'outline'
 }
 
+//just a button 
 export default function Button({
     onClick,
     loading,
@@ -13,7 +15,9 @@ export default function Button({
     children,
     variant = 'primary'
 }: ButtonProps) {
+    //the base styling
     const base = "w-full py-3 rounded-lg font-medium transition-colors disabled:opacity-50 cursor-pointer flex items-center justify-center gap-2"
+    //dynamic styling when theres action on the button
     const styles = {
         primary: "bg-[var(--accent-orange)] text-white hover:bg-[var(--accent-dim)]",
         outline: "border border-[var(--border-subtle)] text-[var(--text-primary)] hover:bg-[var(--bg-surface)]"
@@ -25,6 +29,7 @@ export default function Button({
             disabled={loading || disabled}
             className={`${base} ${styles[variant]}`}
         >
+            {/* if loading is true, spinning animation as svg, else will just load */}
             {loading ? (
                 <svg
                     className="animate-spin h-4 w-4"

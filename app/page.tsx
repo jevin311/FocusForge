@@ -23,12 +23,15 @@ export default function Home() {
   async function handleEmailLogin() {
     setLoading(true)
 
+    //aysnc allow supabase to authenticate login info, if theres error, {error} will have value
     const { error } = await supabase.auth.signInWithPassword({
       email, password
     })
 
+    //the error messages if theres error (the predicted error is what supabase usually generate)
     if (error) {
       if (error.message.includes('Invalid login credentials')) {
+        //same ouput even if account does not exist for security reasons
         toast.error('Incorrect email or password.')
       } else if (error.message.includes('Email not confirmed')) {
         toast.error('Please verify your email before logging in')
@@ -39,6 +42,7 @@ export default function Home() {
       return
     }
 
+    //pop up when successfully logged in
     toast.success("Time to forge!")
     router.push('/dashboard')
   }
@@ -49,6 +53,7 @@ export default function Home() {
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
+        //refer to app/auth/callback, redirect to dashboard
         redirectTo: `${window.location.origin}/auth/callback`
       }
     })
@@ -62,6 +67,7 @@ export default function Home() {
 
       <div className="w-full max-w-sm">
 
+        {/* email input */}
         <Input
           label="Email"
           type="email"
@@ -70,6 +76,7 @@ export default function Home() {
           placeholder="input your email"
         />
 
+        {/*password input */}
         <Input
           label="Password"
           type="password"
@@ -78,6 +85,7 @@ export default function Home() {
           placeholder="input your password"
         />
 
+        {/*forget password*/}
         <div className="flex justify-end mb-6">
           <Link
             href="/forgot-password"
@@ -87,20 +95,24 @@ export default function Home() {
           </Link>
         </div>
 
+        {/*log in button*/}
         <Button onClick={handleEmailLogin} loading={loading}>
           Log in
         </Button>
 
+        {/*just a simple "or" between login and google login*/}
         <div className="flex items-center gap-3 my-4">
           <div className="flex-1 h-px bg-[var(--border-subtle)]" />
           <span className="text-[var(--text-faint)] text-sm">or</span>
           <div className="flex-1 h-px bg-[var(--border-subtle)]" />
         </div>
 
+        {/*google login button*/}
         <Button onClick={handleGoogleLogin} variant="outline">
           Continue with Google
         </Button>
 
+        {/*sign up button*/}
         <p className="text-center text-[var(--text-muted)] text-sm mt-6">
           No account yet?{' '}
           <Link

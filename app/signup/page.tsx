@@ -18,7 +18,7 @@ export default function Signup() {
     const [confirmPassword, setConfirmPassword] = useState('')
     const [loading, setLoading] = useState(false)
 
-
+    //normal signup with email, pw
     async function handleSignup() {
         if (password != confirmPassword) {
             toast.error('Password do not match')
@@ -34,11 +34,15 @@ export default function Signup() {
         const { error } = await supabase.auth.signUp({
             email,
             password,
+            //configuration: where to redirect to, the error handle later
             options: {
+                //emailRedirectTo used in email flows (signup, password reset)
+                //check app/auth/callback as well, go to dashboard 
                 emailRedirectTo: `${window.location.origin}/auth/callback`
             }
         })
-
+        
+        //this will decide the redirection
         if (error) {
             if (error.message.includes('already registered') ||
                 error.message.includes('already in use') ||
@@ -59,6 +63,7 @@ export default function Signup() {
         const { error } = await supabase.auth.signInWithOAuth({
             provider: 'google',
             options: {
+                //refer to app/auth/callback, redirect to dashboard
                 redirectTo: `${window.location.origin}/auth/callback`
             }
         })

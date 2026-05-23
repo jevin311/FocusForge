@@ -11,6 +11,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="en">
       <body>
         {children}
+        //toaster is for the pop up when theres an error/sonner
         <Toaster position="top-center" richColors theme="dark" />
       </body>
     </html>

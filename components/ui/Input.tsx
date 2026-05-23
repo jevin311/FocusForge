@@ -6,6 +6,7 @@ interface InputProps {
     placeholder?: string
 }
 
+//pretty straight foward, just the place where text is input
 export default function Input({
     label,
     type = 'text',
