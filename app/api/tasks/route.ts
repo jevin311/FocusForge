@@ -30,30 +30,32 @@ export async function GET(request: NextRequest) {
 // When user adds a task
 export async function POST(request: NextRequest) {
   const supabase = await createServerSupabaseClient()
-  const { userId, title, mode } = await request.json()
+  const { userId, title, mode, due_date } = await request.json()
+ 
   const effectiveUserId = userId ?? TEMP_USER_ID
-
+ 
   if (!effectiveUserId || !title) {
     return NextResponse.json(
       { error: 'userId and title are required' },
       { status: 400 }
     )
   }
-
+ 
   const { data, error } = await supabase
     .from('tasks')
     .insert({
       user_id: effectiveUserId,
       title: title.trim(),
       mode: mode || 'Deep Focus',
+      due_date: due_date ?? null,
     })
     .select()
-    .single()  
-
+    .single()
+ 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 })
   }
-
+ 
   return NextResponse.json(data, { status: 201 })
 }
 
