@@ -6,7 +6,7 @@ import Link from 'next/link'
 import { toast } from 'sonner'
 import Button from '@/components/ui/Button'
 import Input from '@/components/ui/Input'
-import AuthHeader from '@/components/ui/AuthHeader'
+import AuthCard from '@/components/ui/AuthCard'
 
 export default function ForgotPassword() {
     const supabase = createClient()
@@ -15,10 +15,15 @@ export default function ForgotPassword() {
     const [loading, setLoading] = useState(false)
 
     async function handleReset() {
+        if (!email) {
+            toast.error('Please enter your email')
+            return
+        }
+
         setLoading(true)
 
         const { error } = await supabase.auth.resetPasswordForEmail(email, {
-            redirectTo: `{window.location.origin}/reset-password`
+            redirectTo: `${window.location.origin}/auth/callback?type=recovery`
         })
 
         if (error) {
@@ -33,39 +38,42 @@ export default function ForgotPassword() {
     }
 
     return (
-        <main className="flex flex-col items-center justify-center min-h-screen bg-[var(--bg-base)] px-4">
+        <AuthCard>
 
-            <AuthHeader />
+            <div className="flex flex-col w-full max-w-[320px] mx-auto gap-3">
+                <div className="text-center mb-6">
+                    <h1 className="text-2xl font-semibold text-[var(--text-primary)] mb-1">
+                        Reset your password
+                    </h1>
+                    <p className="text-[var(--text-muted)] text-sm">
+                        Enter your email and we will send you a reset link.
+                    </p>
+                </div>
 
-            <div className="w-full max-w-sm">
-                <p className="text-[var(--text-primary)] font-semibold mb-1">
-                    Reset your password
-                </p>
-                <p className="text-[var(--text-muted)] text-sm mb-6">
-                    Enter your email and we will send you a reset link.
-                </p>
 
                 <Input
                     label="Email"
                     type="email"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    placeholder="input your email"
+                    placeholder="you.domain.com"
                 />
 
-                <div className="mb-6" />
-                
+                <div className="mb-8" />
+
                 <Button onClick={handleReset} loading={loading}>
                     Send reset link
                 </Button>
 
-                <p className="text-center text-[var(--text-muted)] text-sm mt-6">
+                <p className="text-center text-[var(--text-muted)] text-sm mt-8">
                     Remembered it?{' '}
                     <Link href="/" className="text-[var(--accent-orange)] hover:text-[var(--accent-dim)]">
-                    Back to login
+                        Back to login
                     </Link>
                 </p>
+
             </div>
-        </main>
+
+        </AuthCard >
     )
 }

@@ -1,30 +1,41 @@
 'use client'
 
 import { createClient } from '@/lib/supabase/client'
-import { useState } from 'react'
+import { useState, useEffect, Suspense } from 'react'
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import Button from '@/components/ui/Button'
 import Input from '@/components/ui/Input'
-import AuthHeader from '@/components/ui/AuthHeader'
+import AuthCard from '@/components/ui/AuthCard'
 import { toast } from 'sonner'
+import GoogleButton from '@/components/ui/GoogleButton'
 
 
 //login page function
-export default function Home() {
+function LoginForm() {
   const supabase = createClient()
   const router = useRouter()
+  const searchParams = useSearchParams()
 
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
+
+  useEffect(() => {
+    if (searchParams.get('verified') === 'true') {
+      toast.success('Email verified! you can now log in.')
+    }
+    if (searchParams.get('error') === 'auth') {
+      toast.error('Something went wrong. Please try again.')
+    }
+  }, [searchParams])
 
   //2 different login methods, first is email password
   async function handleEmailLogin() {
     setLoading(true)
 
     //aysnc allow supabase to authenticate login info, if theres error, {error} will have value
-    const { error } = await supabase.auth.signInWithPassword({
+    const { data, error } = await supabase.auth.signInWithPassword({
       email, password
     })
 
@@ -43,7 +54,8 @@ export default function Home() {
     }
 
     //pop up when successfully logged in
-    toast.success("Time to forge!")
+    const name = data.user?.user_metadata?.full_name?.split(' ')[0] || data.user?.user_metadata?.name?.split(' ')[0]
+    toast.success(name ? `Time to forge, ${name}!` : `Time to forge!`)
     router.push('/dashboard')
   }
 
@@ -54,26 +66,35 @@ export default function Home() {
       provider: 'google',
       options: {
         //refer to app/auth/callback, redirect to dashboard
-        redirectTo: `${window.location.origin}/auth/callback`
+        redirectTo: `${window.location.origin}/auth/callback?type=google`
       }
     })
     if (error) toast.error(error.message)
   }
 
   return (
-    <main className="flex flex-col items-center justify-center min-h-screen bg-[var(--bg-base)] px-4">
+    <AuthCard>
 
-      <AuthHeader />
-
-      <div className="w-full max-w-sm">
+      <div className="flex flex-col w-full max-w-[320px] mx-auto gap-3">
+        <div className="text-center mb-8">
+          <h1 className="text-3xl font-semibold mb-1">
+            <span className="text-[var(--text-primary)]">Focus</span>
+            <span className="text-[var(--accent-orange)]">Forge</span>
+          </h1>
+          <p className="text-[var(--text-muted)] text-sm">
+            Your focus, forged daily.
+          </p>
+        </div>
 
         {/* email input */}
+
+
         <Input
           label="Email"
           type="email"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
-          placeholder="input your email"
+          placeholder="you@domain.com"
         />
 
         {/*password input */}
@@ -82,11 +103,11 @@ export default function Home() {
           type="password"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
-          placeholder="input your password"
+          placeholder="••••••••"
         />
 
         {/*forget password*/}
-        <div className="flex justify-end mb-6">
+        <div className="flex justify-end -mb-2">
           <Link
             href="/forgot-password"
             className="text-sm text-[var(--accent-orange)] hover:text-[var(--accent-dim)]"
@@ -100,30 +121,34 @@ export default function Home() {
           Log in
         </Button>
 
+
         {/*just a simple "or" between login and google login*/}
-        <div className="flex items-center gap-3 my-4">
+        <div className="flex items-center gap-3 my-6">
           <div className="flex-1 h-px bg-[var(--border-subtle)]" />
-          <span className="text-[var(--text-faint)] text-sm">or</span>
+          <span className="text-[var(--text-faint)] text-xs uppercase tracking-widest">or</span>
           <div className="flex-1 h-px bg-[var(--border-subtle)]" />
         </div>
 
         {/*google login button*/}
-        <Button onClick={handleGoogleLogin} variant="outline">
-          Continue with Google
-        </Button>
+        <GoogleButton onClick={handleGoogleLogin} />
 
         {/*sign up button*/}
-        <p className="text-center text-[var(--text-muted)] text-sm mt-6">
+        <p className="text-center text-[var(--text-muted)] text-sm mt-8">
           No account yet?{' '}
-          <Link
-            href="/signup"
-            className="text-[var(--accent-orange)] hover:text-[var(--accent-dim)]"
-          >
+          <Link href="/signup" className="text-[var(--accent-orange)] hover:text-[var(--accent-dim)]">
             Sign up
           </Link>
         </p>
-
       </div>
-    </main>
+  
+    </AuthCard>
+  )
+}
+
+export default function Home() {
+  return (
+    <Suspense>
+      <LoginForm />
+    </Suspense>
   )
 }

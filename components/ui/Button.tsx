@@ -16,11 +16,11 @@ export default function Button({
     variant = 'primary'
 }: ButtonProps) {
     //the base styling
-    const base = "w-full py-3 rounded-lg font-medium transition-colors disabled:opacity-50 cursor-pointer flex items-center justify-center gap-2"
+    const base = "w-full h-10 px-5 tracking-wide font-bold text-sm transition-all duration-200 rounded-lg disabled:opacity-50 cursor-pointer flex items-center justify-center gap-2"
     //dynamic styling when theres action on the button
     const styles = {
-        primary: "bg-[var(--accent-orange)] text-white hover:bg-[var(--accent-dim)]",
-        outline: "border border-[var(--border-subtle)] text-[var(--text-primary)] hover:bg-[var(--bg-surface)]"
+        primary: "bg-[var(--accent-orange)] text-white hover:bg-[var(--accent-dim)] focus:outline-none focus:bg-[var(--accent-dim)]",
+        outline: "border border-[var(--border-input)] text-[var(--text-primary)] hover:bg-[var(--bg-surface)] focus:outline-none"
     }
 
     return (
