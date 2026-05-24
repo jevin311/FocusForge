@@ -8,7 +8,7 @@ import Button from '@/components/ui/Button'
 import Input from '@/components/ui/Input'
 import AuthHeader from '@/components/ui/AuthHeader'
 
-export default function forgotPassword() {
+export default function ForgotPassword() {
     const supabase = createClient()
 
     const [email, setEmail] = useState('')
