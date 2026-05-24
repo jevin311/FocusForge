@@ -1,11 +1,11 @@
 'use client'
 
-interface task {
-    id: string
-    title: string
-    completed: boolean
-    mode: string
-    due: Date
+interface Task {
+  id: string
+  title: string
+  completed: boolean
+  mode: string
+  due_date: string | null
 }
 
 interface Props {
@@ -14,27 +14,52 @@ interface Props {
   onDelete: (id: string) => void
 }
 
-export default function TaskItem(props: Props) {
-  const { task, onToggle, onDelete } = props
-  
-  // Styling for the different modes
+function getDueDateInfo(due_date: string | null): {
+  label: string
+  colour: string
+} {
+
+  if (!due_date) return { label: 'No due date', colour: 'rgba(255,255,255,0.2)' }
+
+  const due = new Date(due_date + 'T00:00:00')
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+  const tomorrow = new Date(today)
+  tomorrow.setDate(today.getDate() + 1)
+
+  const label = 'Due ' + due.toLocaleDateString('en-SG', {
+    day: 'numeric',
+    month: 'short',
+  })
+
+  let colour = 'rgba(255,255,255,0.3)'
+  if (due < today) colour = '#ef4444'
+  else if (due <= tomorrow) colour = '#fbbf24'
+
+  return { label, colour }
+}
+
+export default function TaskItem({ task, onToggle, onDelete }: Props) {
+
   const modeStyle: Record<string, React.CSSProperties> = {
     'Deep Focus': {
       background: 'rgba(129,140,248,0.1)',
       color: '#a5b4fc',
-      border: '1px solid rgba(129,140,248,0.2)'
+      border: '1px solid rgba(129,140,248,0.2)',
     },
     'Research': {
       background: 'rgba(52,211,153,0.08)',
       color: '#6ee7b7',
-      border: '1px solid rgba(52,211,153,0.2)'
+      border: '1px solid rgba(52,211,153,0.2)',
     },
     'Practice': {
       background: 'rgba(251,191,36,0.08)',
       color: '#fcd34d',
-      border: '1px solid rgba(251,191,36,0.2)'
+      border: '1px solid rgba(251,191,36,0.2)',
     },
   }
+
+  const { label: dueDateLabel, colour: dueDateColour } = getDueDateInfo(task.due_date)
 
   return (
     <div style={{
@@ -42,18 +67,16 @@ export default function TaskItem(props: Props) {
       alignItems: 'center',
       gap: '12px',
       background: 'var(--bg-card)',
-
       border: task.completed
         ? '1px solid var(--border-subtle)'
         : '1px solid rgba(249,115,22,0.2)',
-
       borderRadius: '11px',
       padding: '12px 14px',
       opacity: task.completed ? 0.5 : 1,
       transition: 'opacity 0.2s',
     }}>
 
-      {/* For our checkbox */}
+      {/* Checkbox */}
       <div
         onClick={() => onToggle(task.id, task.completed)}
         style={{
@@ -76,39 +99,83 @@ export default function TaskItem(props: Props) {
         {task.completed && '✓'}
       </div>
 
-      {/* Our task and mode taggings */}
-      <div style={{ flex: 1, minWidth: 0 }}>
+      {/* Title + mode row + due date row */}
+      <div style={{
+        flex: 1,
+        minWidth: 0,
+        display: 'flex',
+        flexDirection: 'column',
+        gap: '6px',
+        justifyContent: 'center',
+      }}>
 
+        {/* Title */}
         <div style={{
           fontSize: '13px',
-          color: task.completed ? 'var(--text-faint)' : 'rgba(255,255,255,0.8)',
+          fontWeight: 500,
+          color: task.completed ? 'var(--text-faint)' : 'rgba(255,255,255,0.85)',
           textDecoration: task.completed ? 'line-through' : 'none',
           whiteSpace: 'nowrap',
           overflow: 'hidden',
           textOverflow: 'ellipsis',
+          lineHeight: 1,
         }}>
           {task.title}
         </div>
 
-        {/* The mode tag */}
-        <div style={{ marginTop: '4px' }}>
+        {/* Mode tag + due date */}
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: '8px',
+          flexWrap: 'wrap',
+        }}>
+
+          {/* Mode tag */}
           <span style={{
             fontSize: '9px',
             padding: '2px 8px',
             borderRadius: '20px',
+            lineHeight: 1.4,
             ...(modeStyle[task.mode] ?? modeStyle['Deep Focus']),
           }}>
             {task.mode}
           </span>
+
+          {/* Just the seperating dot */}
+          <span style={{
+            width: '3px',
+            height: '3px',
+            borderRadius: '50%',
+            background: 'rgba(255,255,255,0.15)',
+            flexShrink: 0,
+            display: 'inline-block',
+          }} />
+
+          {/* Due date — always shown, even if "No due date" */}
+          <span style={{
+            fontSize: '9px',
+            color: dueDateColour,
+            lineHeight: 1.4,
+            display: 'flex',
+            alignItems: 'center',
+            gap: '3px',
+          }}>
+            {task.due_date
+              ? (dueDateColour === '#ef4444' ? '⚠ ' : '📅 ')
+              : '○ '
+            }
+            {dueDateLabel}
+          </span>
+
         </div>
       </div>
 
-      {/* For launching our session for the task */}
-      {/* onClick will eventually launch a session — wired up later */}
+      {/* Play button */}
       <button style={{
         width: '30px',
         height: '30px',
-        borderRadius: '50%', // makes it a circle
+        borderRadius: '50%',
         background: 'linear-gradient(135deg, #f97316, #c2410c)',
         border: 'none',
         color: '#fff',
@@ -116,11 +183,9 @@ export default function TaskItem(props: Props) {
         cursor: 'pointer',
         flexShrink: 0,
         boxShadow: '0 0 12px rgba(249,115,22,0.3)',
-      }}>
-        ▶
-      </button>
+      }}>▶</button>
 
-      {/* For deleting tasks */}
+      {/* Delete button */}
       <button
         onClick={() => onDelete(task.id)}
         style={{
@@ -132,9 +197,7 @@ export default function TaskItem(props: Props) {
           flexShrink: 0,
           lineHeight: 1,
         }}
-      >
-        ×
-      </button>
+      >×</button>
 
     </div>
   )
