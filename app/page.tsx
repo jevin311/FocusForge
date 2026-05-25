@@ -10,8 +10,7 @@ import AuthCard from '@/components/ui/AuthCard'
 import { toast } from 'sonner'
 import GoogleButton from '@/components/ui/GoogleButton'
 
-
-//login page function
+// login page function
 export default function Home() {
   const supabase = createClient()
   const router = useRouter()
@@ -34,40 +33,41 @@ export default function Home() {
   useEffect(() => {
     async function checkSession() {
       const { data: { session } } = await supabase.auth.getSession()
+
       if (session) {
         router.replace('/dashboard')
       }
     }
+
     checkSession()
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Fix for bfcache — when user clicks Google login but hits back without
-  // completing it, the browser restores a frozen snapshot of this page.
-  // Frozen pages have no working React event listeners, so buttons do nothing.
-  // Detecting e.persisted and reloading forces a fresh working page.
+  // Fix for bfcache — prevents frozen back/forward navigation issues after OAuth
   useEffect(() => {
     function handlePageShow(e: PageTransitionEvent) {
       if (e.persisted) {
         window.location.reload()
       }
     }
+
     window.addEventListener('pageshow', handlePageShow)
-    return () => window.removeEventListener('pageshow', handlePageShow)
+
+    return () => {
+      window.removeEventListener('pageshow', handlePageShow)
+    }
   }, [])
 
-  //2 different login methods, first is email password
+  // email/password login
   async function handleEmailLogin() {
     setLoading(true)
 
-    //aysnc allow supabase to authenticate login info, if theres error, {error} will have value
-    const { data, error } = await supabase.auth.signInWithPassword({
-      email, password
+    const { error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
     })
 
-    //the error messages if theres error (the predicted error is what supabase usually generate)
     if (error) {
       if (error.message.includes('Invalid login credentials')) {
-        //same ouput even if account does not exist for security reasons
         toast.error('Incorrect email or password.')
       } else if (error.message.includes('Email not confirmed')) {
         toast.error('Please verify your email before logging in')
@@ -78,26 +78,23 @@ export default function Home() {
       return
     }
 
-    //add param when logging in so that dashboard can show pop up welcome msg
     router.push('/dashboard?login=email')
   }
 
-  //second method is using google
+  // google login
   async function handleGoogleLogin() {
-    //use supabase 3rd party OAuth
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
-        //refer to app/auth/callback, redirect to dashboard
-        redirectTo: `${window.location.origin}/auth/callback?type=google`
-      }
+        redirectTo: `${window.location.origin}/auth/callback?type=google`,
+      },
     })
+
     if (error) toast.error(error.message)
   }
 
   return (
     <AuthCard>
-
       <div className="flex flex-col w-full max-w-[320px] mx-auto gap-3">
         <div className="text-center mb-8">
           <h1 className="text-3xl font-semibold mb-1">
@@ -110,8 +107,6 @@ export default function Home() {
         </div>
 
         {/* email input */}
-
-
         <Input
           label="Email"
           type="email"
@@ -120,7 +115,7 @@ export default function Home() {
           placeholder="you@domain.com"
         />
 
-        {/*password input */}
+        {/* password input */}
         <Input
           label="Password"
           type="password"
@@ -129,7 +124,7 @@ export default function Home() {
           placeholder="••••••••"
         />
 
-        {/*forget password*/}
+        {/* forgot password */}
         <div className="flex justify-end -mb-2">
           <Link
             href="/forgot-password"
@@ -139,32 +134,34 @@ export default function Home() {
           </Link>
         </div>
 
-        {/*log in button*/}
+        {/* login button */}
         <Button onClick={handleEmailLogin} loading={loading}>
           Log in
         </Button>
 
-
-        {/*just a simple "or" between login and google login*/}
+        {/* separator */}
         <div className="flex items-center gap-3 my-6">
           <div className="flex-1 h-px bg-[var(--border-subtle)]" />
-          <span className="text-[var(--text-faint)] text-xs uppercase tracking-widest">or</span>
+          <span className="text-[var(--text-faint)] text-xs uppercase tracking-widest">
+            or
+          </span>
           <div className="flex-1 h-px bg-[var(--border-subtle)]" />
         </div>
 
-        {/*google login button*/}
+        {/* google login */}
         <GoogleButton onClick={handleGoogleLogin} />
 
-        {/*sign up button*/}
+        {/* sign up */}
         <p className="text-center text-[var(--text-muted)] text-sm mt-8">
           No account yet?{' '}
-          <Link href="/signup" className="text-[var(--accent-orange)] hover:text-[var(--accent-dim)]">
+          <Link
+            href="/signup"
+            className="text-[var(--accent-orange)] hover:text-[var(--accent-dim)]"
+          >
             Sign up
           </Link>
         </p>
       </div>
-
     </AuthCard>
   )
 }
-
