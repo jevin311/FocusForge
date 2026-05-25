@@ -23,7 +23,7 @@ export async function GET(request: Request) {
                 return NextResponse.redirect(`${origin}/reset-password`)
             }
             if (type === 'google') {
-                return NextResponse.redirect(`${origin}/dashboard`)
+                return NextResponse.redirect(`${origin}/dashboard?login=google`)
             }
             //for normal email verification, go to login
             return NextResponse.redirect(`${origin}/?verified=true`)
