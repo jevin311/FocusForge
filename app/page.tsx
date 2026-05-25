@@ -1,7 +1,7 @@
 'use client'
 
 import { createClient } from '@/lib/supabase/client'
-import { useState, useEffect, Suspense } from 'react'
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Button from '@/components/ui/Button'
@@ -12,7 +12,7 @@ import GoogleButton from '@/components/ui/GoogleButton'
 
 
 //login page function
-function LoginForm() {
+export default function Home() {
   const supabase = createClient()
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -53,10 +53,8 @@ function LoginForm() {
       return
     }
 
-    //pop up when successfully logged in
-    const name = data.user?.user_metadata?.full_name?.split(' ')[0] || data.user?.user_metadata?.name?.split(' ')[0]
-    toast.success(name ? `Time to forge, ${name}!` : `Time to forge!`)
-    router.push('/dashboard')
+    //add param when logging in so that dashboard can show pop up welcome msg
+    router.push('/dashboard?login=email')
   }
 
   //second method is using google
@@ -145,10 +143,3 @@ function LoginForm() {
   )
 }
 
-export default function Home() {
-  return (
-    <Suspense>
-      <LoginForm />
-    </Suspense>
-  )
-}

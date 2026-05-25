@@ -1,7 +1,45 @@
+'use client'
+
 import ForgePanel from '@/components/ForgePanel'
 import TaskList from '@/components/TaskList'
+import { useEffect, useRef } from 'react'
+import { useSearchParams, useRouter } from 'next/navigation'
+import { createClient } from '@/lib/supabase/client'
+import { toast } from 'sonner'
 
 export default function DashboardPage() {
+  //all these for welcome pop up message when login in
+  const supabase = createClient()
+  const searchParams = useSearchParams()
+  const router = useRouter()
+  const toastShown = useRef(false)
+
+  useEffect(() => {
+    async function handleWelcomeToast() {
+      const loginType = searchParams.get('login')
+      if (!loginType) return
+      if (toastShown.current) return //prevent double pop up
+
+      toastShown.current = true
+
+      //get user from session
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) return
+
+      const name = user.user_metadata?.full_name?.split(' ')[0] || user.user_metadata?.name?.split(' ')[0]
+
+      toast.success(name ? `Time to forge, ${name}!` : `Time to forge!`)
+
+      //replace the params back to /dashboard so refresh doesnt cause pop up
+      router.replace('/dashboard')
+    }
+
+    handleWelcomeToast()
+  }, [searchParams])
+
+
+  // pop up message end
+
   return (
     <div style={{
       display: 'grid',
