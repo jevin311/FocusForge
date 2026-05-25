@@ -1,23 +1,29 @@
 import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { NextRequest, NextResponse } from 'next/server'
 
-// Remind me to remove this when our app is done
-const TEMP_USER_ID = 'b242fc90-dd7f-433f-8fd0-958b4e9f8f6c'
-
-// For fetching all the tasks of that specific user
-export async function GET(request: NextRequest) {
+// Helper: gets the authenticated user from the session cookie
+// Returns null if nobody is logged in
+async function getAuthenticatedUser() {
   const supabase = await createServerSupabaseClient()
-  const { searchParams } = new URL(request.url)
-  const userId = searchParams.get('userId') ?? TEMP_USER_ID
+  const { data: { user }, error } = await supabase.auth.getUser()
+  if (error || !user) return null
+  return { supabase, user }
+}
 
-  if (!userId) {
-    return NextResponse.json({ error: 'userId is required' }, { status: 400 })
+export async function GET(request: NextRequest) {
+  const auth = await getAuthenticatedUser()
+
+  // If not logged in, we just reject immediately
+  if (!auth) {
+    return NextResponse.json({ error: 'Not authenticated' }, { status: 401 })
   }
 
-  const { data, error } = await supabase
+  // Use the session user's id — ignore whatever userId was sent in the URL
+  // This means users can only ever fetch their own tasks, to prevent other people from affecting other users' stuff
+  const { data, error } = await auth.supabase
     .from('tasks')
     .select('*')
-    .eq('user_id', userId)
+    .eq('user_id', auth.user.id)
     .order('created_at', { ascending: false })
 
   if (error) {
@@ -27,41 +33,44 @@ export async function GET(request: NextRequest) {
   return NextResponse.json(data)
 }
 
-// When user adds a task
 export async function POST(request: NextRequest) {
-  const supabase = await createServerSupabaseClient()
-  const { userId, title, mode, due_date } = await request.json()
- 
-  const effectiveUserId = userId ?? TEMP_USER_ID
- 
-  if (!effectiveUserId || !title) {
-    return NextResponse.json(
-      { error: 'userId and title are required' },
-      { status: 400 }
-    )
+  const auth = await getAuthenticatedUser()
+
+  if (!auth) {
+    return NextResponse.json({ error: 'Not authenticated' }, { status: 401 })
   }
- 
-  const { data, error } = await supabase
+
+  const { title, mode, due_date } = await request.json()
+
+  if (!title) {
+    return NextResponse.json({ error: 'title is required' }, { status: 400 })
+  }
+
+  const { data, error } = await auth.supabase
     .from('tasks')
     .insert({
-      user_id: effectiveUserId,
+      user_id: auth.user.id,  // always the logged-in user, never from frontend
       title: title.trim(),
       mode: mode || 'Deep Focus',
       due_date: due_date ?? null,
     })
     .select()
     .single()
- 
+
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 })
   }
- 
+
   return NextResponse.json(data, { status: 201 })
 }
 
-// When the user ticks/unticks the checkbox for done or not
 export async function PATCH(request: NextRequest) {
-  const supabase = await createServerSupabaseClient()
+  const auth = await getAuthenticatedUser()
+
+  if (!auth) {
+    return NextResponse.json({ error: 'Not authenticated' }, { status: 401 })
+  }
+
   const body = await request.json()
   const { id, ...updates } = body
 
@@ -69,10 +78,11 @@ export async function PATCH(request: NextRequest) {
     return NextResponse.json({ error: 'id is required' }, { status: 400 })
   }
 
-  const { data, error } = await supabase
+  const { data, error } = await auth.supabase
     .from('tasks')
-    .update(updates)   
-    .eq('id', id) 
+    .update(updates)
+    .eq('id', id)
+    .eq('user_id', auth.user.id)
     .select()
     .single()
 
@@ -83,9 +93,13 @@ export async function PATCH(request: NextRequest) {
   return NextResponse.json(data)
 }
 
-// For user's deletion of tasks
 export async function DELETE(request: NextRequest) {
-  const supabase = await createServerSupabaseClient()
+  const auth = await getAuthenticatedUser()
+
+  if (!auth) {
+    return NextResponse.json({ error: 'Not authenticated' }, { status: 401 })
+  }
+
   const { searchParams } = new URL(request.url)
   const id = searchParams.get('id')
 
@@ -93,10 +107,11 @@ export async function DELETE(request: NextRequest) {
     return NextResponse.json({ error: 'id is required' }, { status: 400 })
   }
 
-  const { error } = await supabase
+  const { error } = await auth.supabase
     .from('tasks')
     .delete()
     .eq('id', id)
+    .eq('user_id', auth.user.id)
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 })

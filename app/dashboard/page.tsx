@@ -1,7 +1,46 @@
+'use client'
+
+import { Suspense } from 'react'
 import ForgePanel from '@/components/ForgePanel'
 import TaskList from '@/components/TaskList'
+import { useEffect, useRef, useState } from 'react'
+import { useSearchParams, useRouter } from 'next/navigation'
+import { createClient } from '@/lib/supabase/client'
+import { toast } from 'sonner'
 
-export default function DashboardPage() {
+function DashboardContent() {
+  //all these for welcome pop up message when login in
+  const supabase = createClient()
+  const searchParams = useSearchParams()
+  const router = useRouter()
+  const toastShown = useRef(false)
+  const [userId, setUserId] = useState<string | null>(null)
+
+  useEffect(() => {
+    async function init() {
+      // Always get the user, we need this for TaskList to work
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) return
+
+      setUserId(user.id)  //To unblock TaskList
+
+      // Only show the welcome toast if this is a fresh login
+      const loginType = searchParams.get('login')
+      if (!loginType || toastShown.current) return
+
+      toastShown.current = true
+
+      const name = user.user_metadata?.full_name?.split(' ')[0]
+        || user.user_metadata?.name?.split(' ')[0]
+
+      toast.success(name ? `Time to forge, ${name}!` : `Time to forge!`)
+
+      router.replace('/dashboard')
+    }
+
+    init()
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
   return (
     <div style={{
       display: 'grid',
@@ -89,9 +128,17 @@ export default function DashboardPage() {
           #0e0c0c
         `,
       }}>
-        <TaskList />
+        <TaskList userId={userId} />
       </div>
 
     </div>
+  )
+}
+
+export default function DashboardPage() {
+  return (
+    <Suspense fallback={null}>
+      <DashboardContent />
+    </Suspense>
   )
 }

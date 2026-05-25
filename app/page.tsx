@@ -1,90 +1,136 @@
 'use client'
 
 import { createClient } from '@/lib/supabase/client'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import Button from '@/components/ui/Button'
 import Input from '@/components/ui/Input'
+import AuthCard from '@/components/ui/AuthCard'
+import { toast } from 'sonner'
+import GoogleButton from '@/components/ui/GoogleButton'
 
+
+//login page function
 export default function Home() {
   const supabase = createClient()
   const router = useRouter()
+  const searchParams = useSearchParams()
 
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
-  const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
 
+  useEffect(() => {
+    if (searchParams.get('verified') === 'true') {
+      toast.success('Email verified! you can now log in.')
+    }
+    if (searchParams.get('error') === 'auth') {
+      toast.error('Something went wrong. Please try again.')
+    }
+  }, [searchParams])
+
+  // If user already has an active session, skip login and go straight to dashboard
+  useEffect(() => {
+    async function checkSession() {
+      const { data: { session } } = await supabase.auth.getSession()
+      if (session) {
+        router.replace('/dashboard')
+      }
+    }
+    checkSession()
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Fix for bfcache — when user clicks Google login but hits back without
+  // completing it, the browser restores a frozen snapshot of this page.
+  // Frozen pages have no working React event listeners, so buttons do nothing.
+  // Detecting e.persisted and reloading forces a fresh working page.
+  useEffect(() => {
+    function handlePageShow(e: PageTransitionEvent) {
+      if (e.persisted) {
+        window.location.reload()
+      }
+    }
+    window.addEventListener('pageshow', handlePageShow)
+    return () => window.removeEventListener('pageshow', handlePageShow)
+  }, [])
+
+  //2 different login methods, first is email password
   async function handleEmailLogin() {
     setLoading(true)
-    setError('')
 
-    const { error } = await supabase.auth.signInWithPassword({
-      email,
-      password
+    //aysnc allow supabase to authenticate login info, if theres error, {error} will have value
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email, password
     })
 
+    //the error messages if theres error (the predicted error is what supabase usually generate)
     if (error) {
       if (error.message.includes('Invalid login credentials')) {
-        setError('Incorrect email or password.')
+        //same ouput even if account does not exist for security reasons
+        toast.error('Incorrect email or password.')
       } else if (error.message.includes('Email not confirmed')) {
-        setError('Please verify your email before logging in')
+        toast.error('Please verify your email before logging in')
       } else {
-        setError(error.message)
+        toast.error(error.message)
       }
       setLoading(false)
       return
     }
 
-    router.push('/dashboard')
+    //add param when logging in so that dashboard can show pop up welcome msg
+    router.push('/dashboard?login=email')
   }
 
+  //second method is using google
   async function handleGoogleLogin() {
+    //use supabase 3rd party OAuth
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
-        redirectTo: `${window.location.origin}/auth/callback`
+        //refer to app/auth/callback, redirect to dashboard
+        redirectTo: `${window.location.origin}/auth/callback?type=google`
       }
     })
-    if (error) setError(error.message)
+    if (error) toast.error(error.message)
   }
 
   return (
-    <main className="flex flex-col items-center justify-center min-h-screen bg-[var(--bg-base)] px-4">
-      
-      <h1 className="text-4xl font-bold mb-2">
-        <span className="text-[var(--text-primary)]">Focus</span>
-        <span className="text-[var(--accent-orange)]">Forge</span>
-      </h1>
+    <AuthCard>
 
-      <p className="text-[var(--text-muted)] mb-8">
-        Your focus, forged daily.
-      </p>
+      <div className="flex flex-col w-full max-w-[320px] mx-auto gap-3">
+        <div className="text-center mb-8">
+          <h1 className="text-3xl font-semibold mb-1">
+            <span className="text-[var(--text-primary)]">Focus</span>
+            <span className="text-[var(--accent-orange)]">Forge</span>
+          </h1>
+          <p className="text-[var(--text-muted)] text-sm">
+            Your focus, forged daily.
+          </p>
+        </div>
 
-      <div className="w-full max-w-sm">
+        {/* email input */}
 
-        {error && (
-          <p className="text-red-400 text-sm text-center mb-4">{error}</p>
-        )}
 
         <Input
           label="Email"
           type="email"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
-          placeholder="input your email"
+          placeholder="you@domain.com"
         />
 
+        {/*password input */}
         <Input
           label="Password"
           type="password"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
-          placeholder="input your password"
+          placeholder="••••••••"
         />
 
-        <div className="flex justify-end mb-6">
+        {/*forget password*/}
+        <div className="flex justify-end -mb-2">
           <Link
             href="/forgot-password"
             className="text-sm text-[var(--accent-orange)] hover:text-[var(--accent-dim)]"
@@ -93,31 +139,32 @@ export default function Home() {
           </Link>
         </div>
 
+        {/*log in button*/}
         <Button onClick={handleEmailLogin} loading={loading}>
           Log in
         </Button>
 
-        <div className="flex items-center gap-3 my-4">
+
+        {/*just a simple "or" between login and google login*/}
+        <div className="flex items-center gap-3 my-6">
           <div className="flex-1 h-px bg-[var(--border-subtle)]" />
-          <span className="text-[var(--text-faint)] text-sm">or</span>
+          <span className="text-[var(--text-faint)] text-xs uppercase tracking-widest">or</span>
           <div className="flex-1 h-px bg-[var(--border-subtle)]" />
         </div>
 
-        <Button onClick={handleGoogleLogin} variant="outline">
-          Continue with Google
-        </Button>
+        {/*google login button*/}
+        <GoogleButton onClick={handleGoogleLogin} />
 
-        <p className="text-center text-[var(--text-muted)] text-sm mt-6">
+        {/*sign up button*/}
+        <p className="text-center text-[var(--text-muted)] text-sm mt-8">
           No account yet?{' '}
-          <Link
-            href="/signup"
-            className="text-[var(--accent-orange)] hover:text-[var(--accent-dim)]"
-          >
+          <Link href="/signup" className="text-[var(--accent-orange)] hover:text-[var(--accent-dim)]">
             Sign up
           </Link>
         </p>
-
       </div>
-    </main>
+
+    </AuthCard>
   )
 }
+

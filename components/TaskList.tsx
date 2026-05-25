@@ -3,8 +3,6 @@ import { useState, useEffect } from 'react'
 import TaskItem from './TaskItem'
 import DatePicker from './DatePicker'
 
-const TEMP_USER_ID = 'b242fc90-dd7f-433f-8fd0-958b4e9f8f6c'
-
 interface Task {
   id: string
   title: string
@@ -13,7 +11,11 @@ interface Task {
   due_date: string | null
 }
 
-export default function TaskList() {
+interface Props {
+  userId: string | null
+}
+
+export default function TaskList({ userId }: Props) {
 
   const [tasks, setTasks] = useState<Task[]>([])
   const [loading, setLoading] = useState(true)
@@ -22,25 +24,28 @@ export default function TaskList() {
   const [adding, setAdding] = useState(false)
   const [dueDate, setDueDate] = useState('')
 
-  useEffect(() => { fetchTasks() }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
-  async function fetchTasks() {
+  useEffect(() => {
+    if (!userId) return  // wait until userId is available
+    fetchTasks(userId)
+  }, [userId]) // re-runs when userId changes from null to the real id
+
+  async function fetchTasks(uid: string) {
     setLoading(true)
-    const res = await fetch(`/api/tasks?userId=${TEMP_USER_ID}`)
+    const res = await fetch('/api/tasks')
     const data = await res.json()
     setTasks(Array.isArray(data) ? data : [])
     setLoading(false)
   }
 
   async function addTask() {
-    if (!newTitle.trim() || adding) return // So that we don't add empty or twice accidentally
+    if (!newTitle.trim() || adding || !userId) return // So that we don't add empty or twice accidentally
     setAdding(true)
 
     const res = await fetch('/api/tasks', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        userId: TEMP_USER_ID,
         title: newTitle,
         mode: mode,
         due_date: dueDate || null,
@@ -48,6 +53,12 @@ export default function TaskList() {
     })
 
     const newTask = await res.json()
+    // If the response has no id, the API failed — don't add broken object to array
+    if (!newTask.id) {
+      console.error('Failed to add task:', newTask)
+      setAdding(false)
+      return
+    }
     setTasks(prev => [newTask, ...prev]) // So that the newest one is at the top of the list
 
     // Just resetting everything
