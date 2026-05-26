@@ -3,6 +3,7 @@
 import { Suspense } from 'react'
 import ForgePanel from '@/components/ForgePanel'
 import TaskList from '@/components/TaskList'
+import Sidebar from '@/components/Sidebar'
 import { useEffect, useRef, useState } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
@@ -15,6 +16,7 @@ function DashboardContent() {
   const toastShown = useRef(false)
 
   const [userId, setUserId] = useState<string | null>(null)
+  const [userName, setUserName] = useState<string | null>(null)
 
   useEffect(() => {
     async function init() {
@@ -27,6 +29,13 @@ function DashboardContent() {
 
       // Needed for TaskList
       setUserId(user.id)
+      //for profile drop down menu
+      setUserName(
+        user.user_metadata?.full_name?.split(' '[0]) ||
+        user.user_metadata?.name?.split(' ')[0] ||
+        user.email?.split('@')[0] ||
+        null
+      )
 
       // Welcome toast
       const loginType = searchParams.get('login')
@@ -48,6 +57,7 @@ function DashboardContent() {
     init()
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
+
   return (
     <div
       style={{
@@ -57,92 +67,9 @@ function DashboardContent() {
         overflow: 'hidden',
       }}
     >
-      {/* Sidebar */}
-      <div
-        style={{
-          background: 'rgba(0,0,0,0.2)',
-          borderRight: '1px solid var(--border-subtle)',
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          justifyContent: 'flex-start',
-          paddingTop: '24px',
-          gap: '6px',
-        }}
-      >
-        {[
-          { icon: '⚒', label: 'Forge', active: true },
-          { icon: '📅', label: 'Calendar', active: false },
-          { icon: '📊', label: 'Stats', active: false },
-        ].map((btn) => (
-          <div
-            key={btn.label}
-            style={{
-              width: '52px',
-              height: '52px',
-              borderRadius: '12px',
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: '4px',
-              cursor: 'pointer',
-              background: btn.active
-                ? 'rgba(249,115,22,0.12)'
-                : 'transparent',
-              border: btn.active
-                ? '1px solid rgba(249,115,22,0.25)'
-                : '1px solid transparent',
-            }}
-          >
-            <span style={{ fontSize: '22px', lineHeight: 1 }}>
-              {btn.icon}
-            </span>
-
-            <span
-              style={{
-                fontSize: '9px',
-                color: btn.active
-                  ? '#f97316'
-                  : 'rgba(255,255,255,0.3)',
-                letterSpacing: '.04em',
-              }}
-            >
-              {btn.label}
-            </span>
-          </div>
-        ))}
-
-        {/* Profile */}
-        <div style={{ marginTop: 'auto', paddingBottom: '16px' }}>
-          <div
-            style={{
-              width: '52px',
-              height: '52px',
-              borderRadius: '12px',
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: '4px',
-              cursor: 'pointer',
-            }}
-          >
-            <span style={{ fontSize: '22px', lineHeight: 1 }}>👤</span>
-
-            <span
-              style={{
-                fontSize: '9px',
-                color: 'rgba(255,255,255,0.3)',
-                letterSpacing: '.04em',
-              }}
-            >
-              Profile
-            </span>
-          </div>
-        </div>
-      </div>
-
+      {/* extracted sidebar as component */}
+      <Sidebar userName={userName} />
+      
       {/* Forge panel */}
       <ForgePanel />
 

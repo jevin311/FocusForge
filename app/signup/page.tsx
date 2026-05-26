@@ -1,7 +1,7 @@
 'use client'
 
 import { createClient } from '@/lib/supabase/client'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import Button from '@/components/ui/Button'
 import Input from '@/components/ui/Input'
@@ -19,6 +19,7 @@ export default function Signup() {
     const [password, setPassword] = useState('')
     const [confirmPassword, setConfirmPassword] = useState('')
     const [loading, setLoading] = useState(false)
+    const [googleLoading, setGoogleLoading] = useState(false)
 
     //normal signup with email, pw
     async function handleSignup() {
@@ -76,6 +77,7 @@ export default function Signup() {
     }
 
     async function handleGoogleLogin() {
+        setGoogleLoading(true)
         const { error } = await supabase.auth.signInWithOAuth({
             provider: 'google',
             options: {
@@ -83,7 +85,10 @@ export default function Signup() {
                 redirectTo: `${window.location.origin}/auth/callback?type=google`
             }
         })
-        if (error) toast.error(error.message)
+        if (error) {
+            toast.error(error.message)
+            setGoogleLoading(false)
+        }
     }
 
 
@@ -142,7 +147,7 @@ export default function Signup() {
                     <div className="flex-1 h-px bg-[var(--border-subtle)]" />
                 </div>
 
-                <GoogleButton onClick={handleGoogleLogin} />
+                <GoogleButton onClick={handleGoogleLogin} loading={googleLoading} />
 
                 <p className="text-center text-[var(--text-muted)] text-sm mt-8">
                     Already have an account?{' '}
