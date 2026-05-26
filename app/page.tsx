@@ -19,6 +19,7 @@ export default function Home() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
+  const [googleLoading, setGoogleLoading] = useState(false)
 
   useEffect(() => {
     if (searchParams.get('verified') === 'true') {
@@ -32,9 +33,9 @@ export default function Home() {
   // If user already has an active session, skip login and go straight to dashboard
   useEffect(() => {
     async function checkSession() {
-      const { data: { session } } = await supabase.auth.getSession()
+      const { data: { user }, error } = await supabase.auth.getUser() //get user also check if user exist or not
 
-      if (session) {
+      if (user && !error) {
         router.replace('/dashboard')
       }
     }
@@ -42,20 +43,6 @@ export default function Home() {
     checkSession()
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Fix for bfcache — prevents frozen back/forward navigation issues after OAuth
-  useEffect(() => {
-    function handlePageShow(e: PageTransitionEvent) {
-      if (e.persisted) {
-        window.location.reload()
-      }
-    }
-
-    window.addEventListener('pageshow', handlePageShow)
-
-    return () => {
-      window.removeEventListener('pageshow', handlePageShow)
-    }
-  }, [])
 
   // email/password login
   async function handleEmailLogin() {
@@ -83,6 +70,7 @@ export default function Home() {
 
   // google login
   async function handleGoogleLogin() {
+    setGoogleLoading(true)
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
@@ -90,7 +78,10 @@ export default function Home() {
       },
     })
 
-    if (error) toast.error(error.message)
+    if (error) {
+      toast.error(error.message)
+      setGoogleLoading(false)
+    }
   }
 
   return (
@@ -149,7 +140,7 @@ export default function Home() {
         </div>
 
         {/* google login */}
-        <GoogleButton onClick={handleGoogleLogin} />
+        <GoogleButton onClick={handleGoogleLogin} loading={googleLoading} />
 
         {/* sign up */}
         <p className="text-center text-[var(--text-muted)] text-sm mt-8">
