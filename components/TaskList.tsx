@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react'
 import TaskItem from './TaskItem'
 import DatePicker from './DatePicker'
+import ModeSelect from './ModeSelect'
 
 interface Task {
   id: string
@@ -132,24 +133,7 @@ export default function TaskList({ userId }: Props) {
       <div style={{ display: 'flex', gap: '8px' }}>
 
         {/* Mode dropdown */}
-        <select
-          value={mode}
-          onChange={e => setMode(e.target.value)}
-          style={{
-            flex: 1,
-            background: 'var(--bg-card)',
-            border: '1px solid var(--border-subtle)',
-            borderRadius: '9px',
-            padding: '8px 10px',
-            color: 'var(--text-muted)',
-            fontSize: '12px',
-            cursor: 'pointer',
-          }}
-        >
-          <option>Deep Focus</option>
-          <option>Research</option>
-          <option>Practice</option>
-        </select>
+        <ModeSelect value={mode} onChange={setMode} />
 
         {/* Custom date picker */}
         <DatePicker
