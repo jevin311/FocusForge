@@ -20,6 +20,7 @@ export default function Home() {
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
   const [googleLoading, setGoogleLoading] = useState(false)
+  const [checking, setChecking] = useState(true)
 
   useEffect(() => {
     if (searchParams.get('verified') === 'true') {
@@ -37,6 +38,8 @@ export default function Home() {
 
       if (user && !error) {
         router.replace('/dashboard')
+      } else {
+        setChecking(false)
       }
     }
 
@@ -84,6 +87,10 @@ export default function Home() {
     }
   }
 
+  if (checking) {
+    return null
+  }
+  
   return (
     <AuthCard>
       <div className="flex flex-col w-full max-w-[320px] mx-auto gap-3">
