@@ -1,7 +1,7 @@
 'use client'
 
 import { createClient } from '@/lib/supabase/client'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, Suspense } from 'react'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Button from '@/components/ui/Button'
@@ -10,17 +10,8 @@ import AuthCard from '@/components/ui/AuthCard'
 import { toast } from 'sonner'
 import GoogleButton from '@/components/ui/GoogleButton'
 
-// login page function
-export default function Home() {
-  const supabase = createClient()
-  const router = useRouter()
+function SearchParamsHandler() {
   const searchParams = useSearchParams()
-
-  const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
-  const [loading, setLoading] = useState(false)
-  const [googleLoading, setGoogleLoading] = useState(false)
-  const [checking, setChecking] = useState(true)
 
   useEffect(() => {
     if (searchParams.get('verified') === 'true') {
@@ -30,6 +21,20 @@ export default function Home() {
       toast.error('Something went wrong. Please try again.')
     }
   }, [searchParams])
+
+  return null
+}
+
+// login page function
+function LoginForm() {
+  const supabase = createClient()
+  const router = useRouter()
+
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+  const [loading, setLoading] = useState(false)
+  const [googleLoading, setGoogleLoading] = useState(false)
+  const [checking, setChecking] = useState(true)
 
   // If user already has an active session, skip login and go straight to dashboard
   useEffect(() => {
@@ -161,5 +166,16 @@ export default function Home() {
         </p>
       </div>
     </AuthCard>
+  )
+}
+
+export default function Home() {
+  return (
+    <>
+      <Suspense fallback={null}>
+        <SearchParamsHandler />
+      </Suspense>
+      <LoginForm />
+    </>
   )
 }
