@@ -1,4 +1,6 @@
 'use client'
+import { useState } from 'react'
+import DatePicker from './DatePicker'
 
 interface Task {
   id: string
@@ -12,6 +14,9 @@ interface Props {
   task: Task
   onToggle: (id: string, completed: boolean) => void
   onDelete: (id: string) => void
+  onEdit: (id: string, title: string) => void
+  onLaunch: (task: Task) => void
+  onEditDate: (id: string, date: string | null) => void
 }
 
 function getDueDateInfo(due_date: string | null): {
@@ -39,7 +44,10 @@ function getDueDateInfo(due_date: string | null): {
   return { label, colour }
 }
 
-export default function TaskItem({ task, onToggle, onDelete }: Props) {
+export default function TaskItem({ task, onToggle, onDelete, onEdit, onLaunch, onEditDate }: Props) {
+  const [editing, setEditing] = useState(false)
+  const [editTitle, setEditTitle] = useState(task.title)
+  const [editingDate, setEditingDate] = useState(false)
 
   const modeStyle: Record<string, React.CSSProperties> = {
     'Deep Focus': {
@@ -60,6 +68,16 @@ export default function TaskItem({ task, onToggle, onDelete }: Props) {
   }
 
   const { label: dueDateLabel, colour: dueDateColour } = getDueDateInfo(task.due_date)
+
+  function handleEditSave() {
+    const trimmed = editTitle.trim()
+    if (trimmed && trimmed !== task.title) {
+      onEdit(task.id, trimmed)
+    } else {
+      setEditTitle(task.title) // if empty. revert
+    }
+    setEditing(false)
+  }
 
   return (
     <div style={{
@@ -109,19 +127,46 @@ export default function TaskItem({ task, onToggle, onDelete }: Props) {
         justifyContent: 'center',
       }}>
 
-        {/* Title */}
-        <div style={{
-          fontSize: '13px',
-          fontWeight: 500,
-          color: task.completed ? 'var(--text-faint)' : 'rgba(255,255,255,0.85)',
-          textDecoration: task.completed ? 'line-through' : 'none',
-          whiteSpace: 'nowrap',
-          overflow: 'hidden',
-          textOverflow: 'ellipsis',
-          lineHeight: 1,
-        }}>
+        {/* Title - double click to edit */}
+        {editing ? (
+          <input
+            autoFocus
+            value={editTitle}
+            onChange={e => setEditTitle(e.target.value)}
+            onKeyDown={e => {
+              if (e.key === 'Enter') handleEditSave()
+              if (e.key === 'Escape') { setEditTitle(task.title); setEditing(false) }
+            }}
+            onBlur={handleEditSave}
+            style={{
+              background: 'transparent',
+              border: 'none',
+              borderBottom: '1px solid rgba(249,115,22,0.4)',
+              color: 'rgba(255,255,255,0.85)',
+              fontSize: '13px', fontWeight: 500,
+              outline: 'none', width: '100%', fontFamily: 'inherit',
+              padding: '0 0 2px 0',
+            }}
+          />
+        ) : (
+        <div 
+          onDoubleClick={() => !task.completed && setEditing(true)}
+          title={task.completed ? '' : 'Double-click to edit'}
+          style={{
+            fontSize: '13px',
+            fontWeight: 500,
+            color: task.completed ? 'var(--text-faint)' : 'rgba(255,255,255,0.85)',
+            textDecoration: task.completed ? 'line-through' : 'none',
+            whiteSpace: 'nowrap',
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            lineHeight: 1,
+            cursor: task.completed ? 'default' : 'text',
+          }}
+        >
           {task.title}
         </div>
+        )}
 
         {/* Mode tag + due date */}
         <div style={{
@@ -153,37 +198,51 @@ export default function TaskItem({ task, onToggle, onDelete }: Props) {
           }} />
 
           {/* Due date — always shown, even if "No due date" */}
-          <span style={{
-            fontSize: '9px',
-            color: dueDateColour,
-            lineHeight: 1.4,
-            display: 'flex',
-            alignItems: 'center',
-            gap: '3px',
-          }}>
-            {task.due_date
-              ? (dueDateColour === '#ef4444' ? '⚠ ' : '📅 ')
-              : '○ '
-            }
-            {dueDateLabel}
-          </span>
+          {editingDate ? (
+            <div style={{ position: 'relative' }}>
+              <DatePicker
+                value={task.due_date ?? ''}
+                onChange={(date) => {
+                  onEditDate(task.id, date || null)
+                  setEditingDate(false)
+                }}
+              />
+            </div>
+          ) : (
+            <span
+              onClick={() => !task.completed && setEditingDate(true)}
+              title={task.completed ? '' : 'Click to edit date'}
+              style={{
+                fontSize: '9px', color: dueDateColour, lineHeight: 1.4,
+                display: 'flex', alignItems: 'center', gap: '3px',
+                cursor: task.completed ? 'default' : 'pointer',
+              }}
+            >
+              {task.due_date ? (dueDateColour === '#ef4444' ? '⚠ ' : '📅 ') : '○ '}
+              {dueDateLabel}
+            </span>
+          )}
 
         </div>
       </div>
 
       {/* Play button */}
-      <button style={{
-        width: '30px',
-        height: '30px',
-        borderRadius: '50%',
-        background: 'linear-gradient(135deg, #f97316, #c2410c)',
-        border: 'none',
-        color: '#fff',
-        fontSize: '10px',
-        cursor: 'pointer',
-        flexShrink: 0,
-        boxShadow: '0 0 12px rgba(249,115,22,0.3)',
-      }}>▶</button>
+      <button 
+        onClick={() => !task.completed && onLaunch(task)}
+        disabled={task.completed}
+        style={{
+          width: '30px',
+          height: '30px',
+          borderRadius: '50%',
+          background: 'linear-gradient(135deg, #f97316, #c2410c)',
+          border: 'none',
+          color: '#fff',
+          fontSize: '10px',
+          cursor: 'pointer',
+          flexShrink: 0,
+          boxShadow: '0 0 12px rgba(249,115,22,0.3)',
+        }}
+      >▶</button>
 
       {/* Delete button */}
       <button

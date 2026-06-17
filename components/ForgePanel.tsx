@@ -166,18 +166,6 @@ export default function ForgePanel() {
         ))}
       </div>
 
-      {/* Start button */}
-      <button style={{
-        width: '100%',
-        background: 'linear-gradient(135deg, #c2410c, #ea580c, #f97316)',
-        border: 'none', borderRadius: '12px', padding: '13px',
-        display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
-        cursor: 'pointer', fontSize: '13px', fontWeight: 700, color: '#fff',
-        boxShadow: '0 4px 20px rgba(194,65,12,0.3)',
-      }}>
-        ⚒ Start a Session
-      </button>
-
     </div>
   )
 }

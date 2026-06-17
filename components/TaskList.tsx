@@ -2,7 +2,7 @@
 import { useState, useEffect } from 'react'
 import TaskItem from './TaskItem'
 import DatePicker from './DatePicker'
-import ModeSelect from './ModeSelect'
+import SessionLauncherModal from './session/SessionLauncherModal'
 
 interface Task {
   id: string
@@ -21,9 +21,9 @@ export default function TaskList({ userId }: Props) {
   const [tasks, setTasks] = useState<Task[]>([])
   const [loading, setLoading] = useState(true)
   const [newTitle, setNewTitle] = useState('')
-  const [mode, setMode] = useState('Deep Focus')
   const [adding, setAdding] = useState(false)
   const [dueDate, setDueDate] = useState('')
+  const [launchTask, setLaunchTask] = useState<Task | null>(null)
 
 
   useEffect(() => {
@@ -48,7 +48,6 @@ export default function TaskList({ userId }: Props) {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         title: newTitle,
-        mode: mode,
         due_date: dueDate || null,
       }),
     })
@@ -87,11 +86,30 @@ export default function TaskList({ userId }: Props) {
     await fetch(`/api/tasks?id=${id}`, { method: 'DELETE' })
   }
 
+  async function editTask(id: string, title: string) {
+    if (!title.trim()) return
+    setTasks(prev => prev.map(t => t.id === id ? { ...t, title } : t))
+    await fetch('/api/tasks', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id, title }),
+    })
+  }
+
+  async function editDateTask(id: string, due_date: string | null) {
+    setTasks(prev => prev.map(t => t.id === id ? { ...t, due_date } : t))
+    await fetch('/api/tasks', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id, due_date }),
+    })
+  }
+
   const pending = tasks.filter(t => !t.completed)
   const completed = tasks.filter(t => t.completed)
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', height: '100%' }}>
 
       <div style={{
         fontSize: '11px', fontWeight: 600,
@@ -129,11 +147,9 @@ export default function TaskList({ userId }: Props) {
         >+</button>
       </div>
 
-      {/* Row 2: mode dropdown + due date picker */}
+      {/* due date picker */}
       <div style={{ display: 'flex', gap: '8px' }}>
 
-        {/* Mode dropdown */}
-        <ModeSelect value={mode} onChange={setMode} />
 
         {/* Custom date picker */}
         <DatePicker
@@ -149,32 +165,70 @@ export default function TaskList({ userId }: Props) {
         </p>
       )}
 
-      {!loading && tasks.length === 0 && (
-        <p style={{ color: 'var(--text-faint)', fontSize: '13px', textAlign: 'center', padding: '20px 0' }}>
-          No tasks yet — add one above to get started.
-        </p>
-      )}
+          {/* Two column layout */}
+    {!loading && (
+      <div style={{
+        display: 'grid',
+        gridTemplateColumns: '1fr 1fr',
+        gap: '16px',
+        flex: 1,
+        minHeight: 0,
+      }}>
 
-      {pending.length > 0 && (
-        <>
-          <div style={{ fontSize: '9px', color: 'var(--text-faint)', textTransform: 'uppercase', letterSpacing: '.08em' }}>
-            In progress
+        {/* Left — In Progress */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+          <div style={{
+            fontSize: '9px', color: 'var(--text-faint)',
+            textTransform: 'uppercase', letterSpacing: '.08em',
+          }}>
+            In progress · {pending.length}
           </div>
+          {pending.length === 0 && (
+            <p style={{ color: 'var(--text-faint)', fontSize: '12px', padding: '12px 0' }}>
+              No tasks yet — add one above.
+            </p>
+          )}
           {pending.map(task => (
-            <TaskItem key={task.id} task={task} onToggle={toggleTask} onDelete={deleteTask} />
+            <TaskItem
+              key={task.id} task={task}
+              onToggle={toggleTask} onDelete={deleteTask}
+              onEdit={editTask} onLaunch={setLaunchTask}
+              onEditDate={editDateTask}
+            />
           ))}
-        </>
-      )}
+        </div>
 
-      {completed.length > 0 && (
-        <>
-          <div style={{ fontSize: '9px', color: 'var(--text-faint)', textTransform: 'uppercase', letterSpacing: '.08em', marginTop: '4px' }}>
-            Completed
+        {/* Right — Completed */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+          <div style={{
+            fontSize: '9px', color: 'var(--text-faint)',
+            textTransform: 'uppercase', letterSpacing: '.08em',
+          }}>
+            Completed · {completed.length}
           </div>
+          {completed.length === 0 && (
+            <p style={{ color: 'var(--text-faint)', fontSize: '12px', padding: '12px 0' }}>
+              Complete a task to see it here.
+            </p>
+          )}
           {completed.map(task => (
-            <TaskItem key={task.id} task={task} onToggle={toggleTask} onDelete={deleteTask} />
+            <TaskItem
+              key={task.id} task={task}
+              onToggle={toggleTask} onDelete={deleteTask}
+              onEdit={editTask} onLaunch={setLaunchTask}
+              onEditDate={editDateTask}
+            />
           ))}
-        </>
+        </div>
+
+      </div>
+    )}
+
+      {launchTask && (
+        <SessionLauncherModal
+          task={launchTask}
+          onClose={() => setLaunchTask(null)}
+        />
       )}
 
     </div>

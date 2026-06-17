@@ -62,7 +62,7 @@ function DashboardContent() {
     <div
       style={{
         display: 'grid',
-        gridTemplateColumns: '64px 2fr 3fr',
+        gridTemplateColumns: '64px 1fr 3fr',
         height: '100vh',
         overflow: 'hidden',
       }}
