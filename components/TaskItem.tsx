@@ -168,34 +168,12 @@ export default function TaskItem({ task, onToggle, onDelete, onEdit, onLaunch, o
         </div>
         )}
 
-        {/* Mode tag + due date */}
         <div style={{
           display: 'flex',
           alignItems: 'center',
           gap: '8px',
           flexWrap: 'wrap',
         }}>
-
-          {/* Mode tag */}
-          <span style={{
-            fontSize: '9px',
-            padding: '2px 8px',
-            borderRadius: '20px',
-            lineHeight: 1.4,
-            ...(modeStyle[task.mode] ?? modeStyle['Deep Focus']),
-          }}>
-            {task.mode}
-          </span>
-
-          {/* Just the seperating dot */}
-          <span style={{
-            width: '3px',
-            height: '3px',
-            borderRadius: '50%',
-            background: 'rgba(255,255,255,0.15)',
-            flexShrink: 0,
-            display: 'inline-block',
-          }} />
 
           {/* Due date — always shown, even if "No due date" */}
           {editingDate ? (
