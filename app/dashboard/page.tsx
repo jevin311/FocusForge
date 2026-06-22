@@ -8,6 +8,8 @@ import { useEffect, useRef, useState } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { toast } from 'sonner'
+import FloatingTimer from '@/components/session/FloatingTimer'
+import { useSessionStore } from '@/lib/session-store'
 
 function DashboardContent() {
   const supabase = createClient()
@@ -17,6 +19,9 @@ function DashboardContent() {
 
   const [userId, setUserId] = useState<string | null>(null)
   const [userName, setUserName] = useState<string | null>(null)
+
+  const { isActive } = useSessionStore()
+  const [showPostSession, setShowPostSession] = useState(false)
 
   useEffect(() => {
     async function init() {
@@ -57,6 +62,11 @@ function DashboardContent() {
     init()
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
+  //post session summary card
+  function handleEndSession() {
+    setShowPostSession(true)  
+}
+
 
   return (
     <div
@@ -67,6 +77,11 @@ function DashboardContent() {
         overflow: 'hidden',
       }}
     >
+    
+    {isActive && (
+      <FloatingTimer onEndSession={handleEndSession} />
+    )}
+      
       {/* extracted sidebar as component */}
       <Sidebar userName={userName} />
       

@@ -17,17 +17,17 @@ interface Props {
 
 const MODES: { value: SessionMode; colour: string; bg: string; border: string; desc: string }[] = [
   {
-    value: 'Deep Focus',
+    value: 'deep-focus',
     colour: '#a5b4fc', bg: 'rgba(129,140,248,0.1)', border: 'rgba(129,140,248,0.2)',
     desc: 'Single task, no interruptions',
   },
   {
-    value: 'Research',
+    value: 'research',
     colour: '#6ee7b7', bg: 'rgba(52,211,153,0.08)', border: 'rgba(52,211,153,0.2)',
     desc: 'Reading, exploring, gathering',
   },
   {
-    value: 'Practice',
+    value: 'practice',
     colour: '#fcd34d', bg: 'rgba(251,191,36,0.08)', border: 'rgba(251,191,36,0.2)',
     desc: 'Problem sets, drills, coding',
   },

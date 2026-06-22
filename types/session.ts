@@ -1,6 +1,6 @@
-export type SessionMode = 'Deep Focus' | 'Research' | 'Practice'
+export type SessionMode = 'deep-focus' | 'research' | 'practice'
 export type TimerType = 'stopwatch' | 'timed'
-export type TabMode = 'single' | 'multi'
+export type TabMode = 'single-tab' | 'multi-tab'
 
 export interface SessionConfig {
   taskId: string
