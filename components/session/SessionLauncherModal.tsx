@@ -192,13 +192,13 @@ export default function SessionLauncherModal({ task, onClose }: Props) {
             </p>
             {[
               {
-                value: 'single' as TabMode,
+                value: 'single-tab' as TabMode,
                 label: 'Single tab',
                 desc: 'Everything I need is here — track my focus',
                 note: 'Tab switches will affect your focus score',
               },
               {
-                value: 'multi' as TabMode,
+                value: 'multi-tab' as TabMode,
                 label: 'Multi tab',
                 desc: 'I have notes or resources in other tabs',
                 note: 'Tab tracking disabled — score based on check-ins',
