@@ -1,6 +1,7 @@
 'use client'
 import { useState } from 'react'
 import DatePicker from './DatePicker'
+import { useSessionStore } from '@/lib/session-store'
 
 interface Task {
   id: string
@@ -48,24 +49,8 @@ export default function TaskItem({ task, onToggle, onDelete, onEdit, onLaunch, o
   const [editing, setEditing] = useState(false)
   const [editTitle, setEditTitle] = useState(task.title)
   const [editingDate, setEditingDate] = useState(false)
+  const isSessionActive = useSessionStore((s) => s.isActive)
 
-  const modeStyle: Record<string, React.CSSProperties> = {
-    'Deep Focus': {
-      background: 'rgba(129,140,248,0.1)',
-      color: '#a5b4fc',
-      border: '1px solid rgba(129,140,248,0.2)',
-    },
-    'Research': {
-      background: 'rgba(52,211,153,0.08)',
-      color: '#6ee7b7',
-      border: '1px solid rgba(52,211,153,0.2)',
-    },
-    'Practice': {
-      background: 'rgba(251,191,36,0.08)',
-      color: '#fcd34d',
-      border: '1px solid rgba(251,191,36,0.2)',
-    },
-  }
 
   const { label: dueDateLabel, colour: dueDateColour } = getDueDateInfo(task.due_date)
 
@@ -205,20 +190,20 @@ export default function TaskItem({ task, onToggle, onDelete, onEdit, onLaunch, o
       </div>
 
       {/* Play button */}
-      <button 
-        onClick={() => !task.completed && onLaunch(task)}
-        disabled={task.completed}
+     <button
+        onClick={() => !task.completed && !isSessionActive && onLaunch(task)}
+        disabled={task.completed || isSessionActive}
+        title={isSessionActive ? 'End current session first' : ''}
         style={{
-          width: '30px',
-          height: '30px',
-          borderRadius: '50%',
-          background: 'linear-gradient(135deg, #f97316, #c2410c)',
-          border: 'none',
-          color: '#fff',
-          fontSize: '10px',
-          cursor: 'pointer',
+          width: '30px', height: '30px', borderRadius: '50%',
+          background: task.completed || isSessionActive
+            ? 'rgba(255,255,255,0.05)'
+            : 'linear-gradient(135deg, #f97316, #c2410c)',
+          border: 'none', color: '#fff', fontSize: '10px',
+          cursor: task.completed || isSessionActive ? 'not-allowed' : 'pointer',
           flexShrink: 0,
-          boxShadow: '0 0 12px rgba(249,115,22,0.3)',
+          boxShadow: task.completed || isSessionActive ? 'none' : '0 0 12px rgba(249,115,22,0.3)',
+          opacity: isSessionActive && !task.completed ? 0.4 : 1,
         }}
       >▶</button>
 
