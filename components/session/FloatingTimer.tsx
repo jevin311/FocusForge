@@ -29,6 +29,8 @@ export default function FloatingTimer({ onEndSession }: Props) {
     tabSwitchCount,
     start,
     end,
+    pause,
+    resume,
     respondToCheckIn,
   } = useSession({
     mode: config?.tabMode ?? 'single-tab',
@@ -36,12 +38,12 @@ export default function FloatingTimer({ onEndSession }: Props) {
     checkInResponseWindowMs: 15 * 1000,
   })
 
-  const endSession = useSessionStore((s) => s.endSession)
-
-  // Auto-start when component mounts
+  const hasStarted = useRef(false)
   useEffect(() => {
+    if (hasStarted.current) return
+    hasStarted.current = true
     start()
-  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [])
 
 
   // Tab visibility for flame
@@ -54,12 +56,15 @@ export default function FloatingTimer({ onEndSession }: Props) {
     return () => document.removeEventListener('visibilitychange', handleVisibility)
   }, [])
 
-  
+
   // Tab title timer
   useEffect(() => {
-    if (status !== 'active') return
-    const elapsedSeconds = Math.floor(elapsedMs / 1000)
-    document.title = `⏱ ${formatTime(elapsedSeconds)} — FocusForge`
+    if (status === 'active') {
+      const elapsedSeconds = Math.floor(elapsedMs / 1000)
+      document.title = `⏱ ${formatTime(elapsedSeconds)} — FocusForge`
+    } else if (status === "paused") {
+      document.title = '⏸ Paused — FocusForge'
+    }
     return () => { document.title = 'FocusForge' }
   }, [elapsedMs, status])
 
@@ -77,9 +82,16 @@ export default function FloatingTimer({ onEndSession }: Props) {
 
   function handleEndSession() {
     const result = end()           // end() from useSession — stops hook, returns SessionResult
-    endSession()                   // clears Zustand store
     document.title = 'FocusForge' // restore title
-    onEndSession(result)           // pass result up to parent for PostSessionCard
+    const safeResult: import('@/hooks/useSession').SessionResult = {
+      durationMs: result?.durationMs ?? 0,
+      idleTimeMs: result?.idleTimeMs ?? 0,
+      tabSwitchCount: result?.tabSwitchCount ?? 0,
+      checkIns: result?.checkIns ?? [],
+      missedCheckInCount: result?.missedCheckInCount ?? 0,
+    }
+  
+    onEndSession(safeResult)
   }
 
   const modeColour: Record<string, string> = {
@@ -193,6 +205,22 @@ export default function FloatingTimer({ onEndSession }: Props) {
       }}>
         &ldquo;{config.commitment}&rdquo;
       </div>
+
+      {/* Pause / Resume */}
+      <button
+        onClick={status === 'active' ? pause : resume}
+        style={{
+          width: '100%', padding: '11px', marginBottom: '8px',
+          background: 'rgba(255,255,255,0.04)',
+          border: '1px solid var(--border-subtle)',
+          borderRadius: '10px',
+          color: 'var(--text-muted)', fontSize: '12px',
+          fontWeight: 600, cursor: 'pointer',
+        }}
+       >
+        {status === 'active' ? '⏸ Pause' : '▶ Resume'}
+       </button>
+
 
       {/* End session */}
       <button

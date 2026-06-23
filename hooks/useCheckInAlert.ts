@@ -11,12 +11,13 @@ export function useCheckInAlert() {
 
   // So that we will be able to play sounds, after the user does something i.e. "Start session"
   const unlockAudio = useCallback(() => {
-    if (!audioCtxRef.current) {
-      audioCtxRef.current = new AudioContext()
+    if (audioCtxRef.current && audioCtxRef.current.state !== 'closed') {
+      if (audioCtxRef.current.state === 'suspended') {
+        audioCtxRef.current.resume()
+      }
+      return
     }
-    if (audioCtxRef.current.state === 'suspended') {
-      audioCtxRef.current.resume()
-    }
+    audioCtxRef.current = new AudioContext()
   }, [])
 
   const requestNotificationPermission = useCallback(async () => {
@@ -102,7 +103,9 @@ export function useCheckInAlert() {
     return () => {
       stopFlashingTitle()
       closeNotification()
-      audioCtxRef.current?.close()
+      if (audioCtxRef.current && audioCtxRef.current.state !== 'closed') {
+        audioCtxRef.current.close()
+      }
     }
   }, [stopFlashingTitle, closeNotification])
 
