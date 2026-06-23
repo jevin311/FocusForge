@@ -9,12 +9,13 @@ import {
 
 interface SidebarProps {
   userName: string | null
+  userAvatar?: string | null
 }
 
 const NAV_ITEMS = [
-  { icon: '🏠', label: 'Home', href: '/dashboard' },
-  { icon: '📅', label: 'Calendar', href: '/calendar' },
-  { icon: '📊', label: 'Stats', href: '/stats' },
+  { icon: '⚒', label: 'Forge', href: '/dashboard' },
+  { icon: '📅', label: 'Analytics', href: '/analytics' },
+  { icon: '🎵', label: 'Lofi', href: '/lofi' },
 ]
 
 export default function Sidebar({ userName }: SidebarProps) {
@@ -34,31 +35,26 @@ export default function Sidebar({ userName }: SidebarProps) {
       display: 'flex',
       flexDirection: 'column',
       alignItems: 'center',
-      justifyContent: 'flex-start',
-      paddingTop: '24px',
-      gap: '12px',
+      paddingTop: '20px',
+      gap: '8px',
     }}>
 
       {/* Account dropdown */}
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <div style={{
-            width: '52px', height: '52px', borderRadius: '12px',
-            display: 'flex', flexDirection: 'column',
-            alignItems: 'center', justifyContent: 'center',
-            gap: '2px', cursor: 'pointer',
-            background: 'rgba(249,115,22,0.12)',
-            border: '1px solid rgba(249,115,22,0.25)',
+            width: '45px', height: '45px', borderRadius: '50%',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            cursor: 'pointer', marginBottom: '8px', flexShrink: 0,
+            background: 'rgb(30, 20, 0)',
+            border: '2px solid rgba(249,115,22,0.25)',
+            overflow: 'hidden',
           }}>
-            <span style={{ fontSize: '32px', lineHeight: 1 }}>⚒</span>
-            <span style={{ fontSize: '9px', color: '#f97316', letterSpacing: '.04em' }}>Forge</span>
+            <span style={{ fontSize: '32px', lineHeight: 1 }}>👤</span>
           </div>
         </DropdownMenuTrigger>
         <DropdownMenuContent side="right" align="start" className="w-48 ml-2">
           <DropdownMenuLabel>{userName || 'My Account'}</DropdownMenuLabel>
-          <DropdownMenuSeparator />
-          <DropdownMenuItem disabled>Profile (coming soon)</DropdownMenuItem>
-          <DropdownMenuItem disabled>Settings (coming soon)</DropdownMenuItem>
           <DropdownMenuSeparator />
           <DropdownMenuItem onClick={handleLogout} className="text-red-500 cursor-pointer">
             Log out

@@ -29,15 +29,27 @@ interface UseSessionOptions {
 const DEFAULT_CHECKIN_INTERVAL = 25 * 60 * 1000
 const DEFAULT_CHECKIN_WINDOW = 15 * 1000
 
+const getStorage = <T,>(key: string, fallback: T): T => {
+  if (typeof window === 'undefined') return fallback;
+  const saved = sessionStorage.getItem(`ff_${key}`);
+  try { return saved ? JSON.parse(saved) : fallback; } 
+  catch { return fallback; }
+}
+
 export function useSession({
   mode,
   checkInIntervalMs = DEFAULT_CHECKIN_INTERVAL,
   checkInResponseWindowMs = DEFAULT_CHECKIN_WINDOW,
 }: UseSessionOptions) {
-  const [status, setStatus] = useState<SessionStatus>('idle')
-  const [elapsedMs, setElapsedMs] = useState(0)
+  const [status, setStatus] = useState<SessionStatus>(() => getStorage('status', 'idle'))
+  const [elapsedMs, setElapsedMs] = useState<number>(() => getStorage('elapsed', 0))
   const [activeCheckIn, setActiveCheckIn] = useState<CheckIn | null>(null)
-  const [checkIns, setCheckIns] = useState<CheckIn[]>([])
+  const [checkIns, setCheckIns] = useState<CheckIn[]>(() => getStorage('checkIns', []))
+
+  useEffect(() => { sessionStorage.setItem('ff_status', JSON.stringify(status)) }, [status])
+  useEffect(() => { sessionStorage.setItem('ff_elapsed', JSON.stringify(elapsedMs)) }, [elapsedMs])
+  useEffect(() => { sessionStorage.setItem('ff_checkIns', JSON.stringify(checkIns)) }, [checkIns])
+
 
   const tickRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const checkInTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -134,11 +146,14 @@ export function useSession({
 
   // --- Controls ---
   const start = useCallback(() => {
-    if (status !== 'idle') return
-    setElapsedMs(0)
-    setCheckIns([])
-    setActiveCheckIn(null)
-    resetIdleTracking()
+    const isRestoring = getStorage('elapsed', 0) > 0;
+    
+    if (!isRestoring) {
+      setElapsedMs(0)
+      setCheckIns([])
+      resetIdleTracking()
+    }
+
     unlockAudio()
     requestNotificationPermission()
     setStatus('active')
@@ -168,6 +183,10 @@ export function useSession({
       missedCheckInCount,
     }
 
+    sessionStorage.removeItem('ff_status')
+    sessionStorage.removeItem('ff_elapsed')
+    sessionStorage.removeItem('ff_checkIns')
+    
     return result
   }, [elapsedMs, totalIdleTime, tabSwitchCount, checkIns, clearCheckInAlert])
 

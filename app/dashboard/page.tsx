@@ -11,6 +11,7 @@ import { toast } from 'sonner'
 import FloatingTimer from '@/components/session/FloatingTimer'
 import { useSessionStore } from '@/lib/session-store'
 import { SessionResult } from '@/hooks/useSession'
+import PostSessionCard from '@/components/session/PostSessionCard'
 
 function DashboardContent() {
   const supabase = createClient()
@@ -21,9 +22,19 @@ function DashboardContent() {
   const [userId, setUserId] = useState<string | null>(null)
   const [userName, setUserName] = useState<string | null>(null)
 
-  const { isActive } = useSessionStore()
+  const { isActive, config } = useSessionStore()
+  const [timerVisible, setTimerVisible] = useState(false)
   const [showPostSession, setShowPostSession] = useState(false)
   const [sessionResult, setSessionResult] = useState<SessionResult | null>(null)
+  const endSession = useSessionStore((s) => s.endSession)
+
+  // Only show timer if store says active AND we have a config
+  // This prevents the timer from showing on refresh with stale state
+  useEffect(() => {
+    if (isActive && config) {
+      setTimerVisible(true)
+    }
+  }, [isActive, config])
 
   useEffect(() => {
     async function init() {
@@ -44,6 +55,7 @@ function DashboardContent() {
         null
       )
 
+
       // Welcome toast
       const loginType = searchParams.get('login')
 
@@ -62,13 +74,21 @@ function DashboardContent() {
     }
 
     init()
-  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [])
 
   //post session summary card
+
   function handleEndSession(result: SessionResult) {
-    setSessionResult(result)
-    setShowPostSession(true)  
-}
+    setTimerVisible(false) // 1. Hide the timer
+    setSessionResult(result) // 3. Show post session card
+    setShowPostSession(true)
+  }
+
+   function handleDone() {
+    endSession()
+    setShowPostSession(false)
+    setSessionResult(null)
+  }
 
 
   return (
@@ -80,20 +100,9 @@ function DashboardContent() {
         overflow: 'hidden',
       }}
     >
-    
-    {isActive && (
-      <FloatingTimer onEndSession={handleEndSession} />
-    )}
-
-    {showPostSession && sessionResult && (
-      <PostSessionCard result={sessionResult} onDone={() => {
-        setShowPostSession(false)
-        setSessionResult(null)
-      }} />
-    )}
       
       {/* extracted sidebar as component */}
-      <Sidebar userName={userName} />
+      <Sidebar userName={userName}/>
       
       {/* Forge panel */}
       <ForgePanel />
@@ -113,6 +122,17 @@ function DashboardContent() {
       >
         <TaskList userId={userId} />
       </div>
+
+      {/* Timer — only when timerVisible, never on page load */}
+      {timerVisible && (
+        <FloatingTimer onEndSession={handleEndSession} />
+      )}
+
+      {showPostSession && sessionResult && (
+      <PostSessionCard result={sessionResult} onDone={handleDone} />
+    )}
+
+
     </div>
   )
 }
