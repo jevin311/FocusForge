@@ -104,9 +104,20 @@ export default function TaskList({ userId }: Props) {
       body: JSON.stringify({ id, due_date }),
     })
   }
+const sortTasks = (a: Task, b: Task) => {
+  // If both have no due date, maintain original order
+  if (!a.due_date && !b.due_date) return 0
+  // If a has no due date, push it to the bottom
+  if (!a.due_date) return 1
+  // If b has no due date, push it to the bottom
+  if (!b.due_date) return -1
+  
+  // Otherwise, sort chronologically (earliest/most urgent first)
+  return new Date(a.due_date).getTime() - new Date(b.due_date).getTime()
+}
 
-  const pending = tasks.filter(t => !t.completed)
-  const completed = tasks.filter(t => t.completed)
+const pending = tasks.filter(t => !t.completed).sort(sortTasks)
+const completed = tasks.filter(t => t.completed).sort(sortTasks)
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', height: '100%' }}>

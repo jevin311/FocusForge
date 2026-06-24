@@ -7,6 +7,7 @@ import type { SessionResult } from '@/hooks/useSession'
 interface Props {
   result: SessionResult
   onDone: () => void
+  onResume: () => void
 }
 
 function formatDuration(ms: number): string {
@@ -19,21 +20,38 @@ function formatDuration(ms: number): string {
   return `${s}s`
 }
 
-export default function PostSessionCard({ result, onDone }: Props) {
+export default function PostSessionCard({ result, onDone, onResume }: Props) {
   const config = useSessionStore((s) => s.config)
   const [selfRating, setSelfRating] = useState(0)
   const [hoveredStar, setHoveredStar] = useState(0)
   const [commitmentMet, setCommitmentMet] = useState<boolean | null>(null)
   const [submitted, setSubmitted] = useState(false)
   const [saving, setSaving] = useState(false)
+  const [saveError, setSaveError] = useState<string | null>(null)
+  const [markTaskComplete, setMarkTaskComplete] = useState(true)
 
   const canSubmit = selfRating > 0 && commitmentMet !== null
 
   async function handleSubmit() {
     if (!canSubmit || !config) return
     setSaving(true)
+    setSaveError(null)
+    
+    //local time-stamp
+    const endedAtDate = new Date()
+    const startedAtDate = new Date(endedAtDate.getTime() - result.durationMs)
+    
+    //format yyyy-mm-dd
+    const localDate = new Date(endedAtDate.getTime() - endedAtDate.getTimezoneOffset() * 60000)
+      .toISOString()
+      .split('T')[0]
 
-    const scoreBreakdown = calculateFocusScore({
+    const payload = {
+      mode: config.mode,
+      taskId: config.taskId ?? null,
+      taskTitle: config.taskTitle ?? null,
+      startedAt: startedAtDate.toISOString(),
+      endedAt: endedAtDate.toISOString(),
       durationMs: result.durationMs,
       idleTimeMs: result.idleTimeMs,
       tabSwitchCount: result.tabSwitchCount,
@@ -41,33 +59,29 @@ export default function PostSessionCard({ result, onDone }: Props) {
       missedCheckInCount: result.missedCheckInCount,
       selfReportRating: selfRating,
       commitmentMet: commitmentMet!,
-      mode: config.mode,
-    })
-
-    const payload = {
-      task_id: config.taskId,
-      mode: config.mode,
-      timer_type: config.timerType,
-      tab_mode: config.tabMode,
-      commitment: config.commitment,
-      commitment_met: commitmentMet,
-      duration_ms: result.durationMs,
-      idle_time_ms: result.idleTimeMs,
-      tab_switch_count: result.tabSwitchCount,
-      checkins_total: result.checkIns.length,
-      checkins_missed: result.missedCheckInCount,
-      self_report_rating: selfRating,
-      focus_score: scoreBreakdown.finalScore,
+      localDate,
+      markTaskComplete: markTaskComplete && !!config.taskId,
     }
 
-    await fetch('/api/sessions', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
-    })
-
-    setSubmitted(true)
-    setSaving(false)
+    try {
+      const res = await fetch('/api/sessions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      })
+      
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}))
+        throw new Error(err.detail ?? err.error ?? `HTTP ${res.status}`)
+      }
+ 
+      setSubmitted(true)
+    } catch (error) {
+      console.error('Submission error:', error)
+      setSaveError(error instanceof Error ? error.message : 'Failed to save. Try again.')
+    } finally {
+      setSaving(false)
+    }
   }
 
   if (!config) return null
@@ -207,6 +221,38 @@ export default function PostSessionCard({ result, onDone }: Props) {
               </div>
             </div>
 
+            {/* ── Mark task complete toggle ── */}
+            {config.taskId && (
+              <div
+                onClick={() => setMarkTaskComplete(v => !v)}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: '10px',
+                  padding: '10px 14px', borderRadius: '10px', cursor: 'pointer',
+                  background: markTaskComplete ? 'rgba(129,140,248,0.08)' : 'var(--bg-card)',
+                  border: markTaskComplete ? '1px solid rgba(129,140,248,0.25)' : '1px solid var(--border-subtle)',
+                  marginBottom: '16px', transition: 'all 0.15s', userSelect: 'none',
+                }}
+              >
+                <div style={{
+                  width: '16px', height: '16px', borderRadius: '4px', flexShrink: 0,
+                  background: markTaskComplete ? 'rgba(129,140,248,0.35)' : 'transparent',
+                  border: markTaskComplete ? '1.5px solid rgba(129,140,248,0.6)' : '1.5px solid rgba(255,255,255,0.2)',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  fontSize: '9px', color: '#c4b5fd',
+                }}>
+                  {markTaskComplete && '✓'}
+                </div>
+                <div>
+                  <div style={{ fontSize: '12px', color: 'rgba(255,255,255,0.8)', fontWeight: 500 }}>
+                    Mark task as completed
+                  </div>
+                  <div style={{ fontSize: '10px', color: 'var(--text-faint)', marginTop: '1px' }}>
+                    {config.taskTitle}
+                  </div>
+                </div>
+              </div>
+            )}
+
             {/* Live score preview */}
             {scoreBreakdown && (
               <div style={{
@@ -234,12 +280,23 @@ export default function PostSessionCard({ result, onDone }: Props) {
               </div>
             )}
 
-            {/* Submit */}
+            {/* ── Error message ── */}
+            {saveError && (
+              <div style={{
+                background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)',
+                borderRadius: '8px', padding: '10px 14px', marginBottom: '12px',
+                fontSize: '12px', color: '#fca5a5', textAlign: 'center',
+              }}>
+                ⚠ {saveError}
+              </div>
+            )}
+
+             {/* ── Save button ── */}
             <button
               onClick={handleSubmit}
               disabled={!canSubmit || saving}
               style={{
-                width: '100%', padding: '14px',
+                width: '100%', padding: '13px', marginBottom: '8px',
                 background: canSubmit
                   ? 'linear-gradient(135deg, #c2410c, #ea580c, #f97316)'
                   : 'rgba(255,255,255,0.05)',
@@ -252,9 +309,23 @@ export default function PostSessionCard({ result, onDone }: Props) {
             >
               {saving ? 'Saving...' : 'Save Session'}
             </button>
+ 
+            {/* ── Return to timer ── */}
+            <button
+              onClick={onResume}
+              style={{
+                width: '100%', padding: '10px',
+                background: 'transparent',
+                border: '1px solid var(--border-subtle)',
+                borderRadius: '12px',
+                color: 'var(--text-muted)', fontSize: '12px',
+                fontWeight: 500, cursor: 'pointer',
+              }}
+            >
+              ← Return to timer
+            </button>
           </>
         ) : (
-          /* Done state */
           <button
             onClick={onDone}
             style={{
