@@ -92,7 +92,7 @@ export default function AnalyticsCalendar({ selectedDate, onSelectDate }: Props)
  
   // Load heatmap (84-day window ending today)
   useEffect(() => {
-    fetch('/api/sessions/heatmap')
+    fetch('/api/heatmap')
       .then(r => r.json())
       .then((data) => {
         if (!data?.grid) return
@@ -117,7 +117,41 @@ export default function AnalyticsCalendar({ selectedDate, onSelectDate }: Props)
     fetch('/api/sessions')
       .then(r => r.json())
       .then((data: Session[]) => {
-        if (Array.isArray(data)) setAllSessions(data)
+        if (!Array.isArray(data)) return
+        
+        setAllSessions(data)
+
+        // Dynamically build the heatmap using local timezone strings
+        const localHeatmap: Record<string, DayHeat> = {}
+        
+        // Group sessions by local date
+        const sessionsByDate: Record<string, Session[]> = {}
+        data.forEach(s => {
+          const localDate = localDateStr(new Date(s.created_at))
+          if (!sessionsByDate[localDate]) {
+            sessionsByDate[localDate] = []
+          }
+          sessionsByDate[localDate].push(s)
+        })
+
+        // Calculate averages per day
+        Object.entries(sessionsByDate).forEach(([dateStr, daySessions]) => {
+          const totalFocusMinutes = Math.round(
+            daySessions.reduce((sum, s) => sum + s.duration_ms, 0) / 60000
+          )
+          const avgFocusScore = Math.round(
+            daySessions.reduce((sum, s) => sum + s.focus_score, 0) / daySessions.length
+          )
+
+          localHeatmap[dateStr] = {
+            avgFocusScore,
+            sessionCount: daySessions.length,
+            totalFocusMinutes
+          }
+        })
+
+        setHeatmap(localHeatmap)
+        setLoadingHeat(false)
       })
       .catch(() => {})
       .finally(() => setLoadingSessions(false))
@@ -139,8 +173,8 @@ export default function AnalyticsCalendar({ selectedDate, onSelectDate }: Props)
  
   // Sessions for the selected day
   const daySessionsRaw = selectedDate
-    ? allSessions.filter(s => s.created_at.slice(0, 10) === selectedDate)
-    : []
+  ? allSessions.filter(s => localDateStr(new Date(s.created_at)) === selectedDate)
+  : []
  
   // Aggregate for the selected day 
   const dayHeat = selectedDate ? heatmap[selectedDate] : null

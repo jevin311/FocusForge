@@ -42,7 +42,16 @@ export default function FloatingTimer({ onEndSession }: Props) {
   useEffect(() => {
     if (hasStarted.current) return
     hasStarted.current = true
-    start()
+
+    // Only call start() when the session is truly idle (fresh launch).
+    // If status is already 'active' or 'paused' (restored from sessionStorage),
+    // do NOT call start() — it would reset elapsed time.
+    // If paused, we leave it paused. If active, the tick effect restarts automatically.
+    const savedStatus = sessionStorage.getItem('ff_status')
+    const parsed = savedStatus ? JSON.parse(savedStatus) : 'idle'
+    if (parsed === 'idle') {
+      start()
+    }
   }, [])
 
 
