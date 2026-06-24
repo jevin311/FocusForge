@@ -146,9 +146,11 @@ export function useSession({
 
   // --- Controls ---
   const start = useCallback(() => {
-    const isRestoring = getStorage('elapsed', 0) > 0;
-    
-    if (!isRestoring) {
+    const savedElapsed = getStorage('elapsed', 0)
+    const savedStatus = getStorage<SessionStatus>('status', 'idle')
+ 
+    // Only reset data when genuinely starting fresh (not restoring a paused/active session)
+    if (savedElapsed === 0 && savedStatus === 'idle') {
       setElapsedMs(0)
       setCheckIns([])
       resetIdleTracking()
