@@ -1,274 +1,395 @@
 'use client'
 import { useEffect, useState } from 'react'
 
-interface DayData {
-  date: string
-  totalMins: number
-  avgFocusScore: number
-  sessionCount: number
-}
-
-interface DaySession {
+interface Session {
   id: string
-  created_at: string
+  mode: string
+  task_title: string | null
   duration_ms: number
   focus_score: number
-  mode: string
-  commitment: string
   commitment_met: boolean
-  checkins_total: number
-  checkins_missed: number
-  tab_switch_count: number
-  tab_mode: string
+  created_at: string
 }
-
+ 
+interface DayHeat {
+  avgFocusScore: number
+  sessionCount: number
+  totalFocusMinutes: number
+}
+ 
 interface Props {
   selectedDate: string | null
   onSelectDate: (date: string) => void
 }
 
-function getScoreColour(score: number): string {
-  if (score === 0) return 'rgba(255,255,255,0.06)'
-  if (score >= 80) return '#f97316'
-  if (score >= 60) return '#fb923c'
-  if (score >= 40) return '#c2410c'
-  return '#7c2d12'
+//helper
+const MODE_COLOUR: Record<string, string> = {
+  'deep-focus': '#a5b4fc',
+  'research': '#6ee7b7',
+  'practice': '#fcd34d',
+}
+ 
+const MODE_LABEL: Record<string, string> = {
+  'deep-focus': 'Deep Focus',
+  'research': 'Research',
+  'practice': 'Practice',
 }
 
-function getLast12Weeks(): string[] {
-  const days: string[] = []
-  const today = new Date()
-  today.setHours(0, 0, 0, 0)
-  const start = new Date(today)
-  start.setDate(today.getDate() - 83)
-  start.setDate(start.getDate() - start.getDay())
-  const cursor = new Date(start)
-  while (cursor <= today) {
-    days.push(cursor.toISOString().slice(0, 10))
-    cursor.setDate(cursor.getDate() + 1)
+//glowing heat color
+function getHeatStyle(score: number, isSelected: boolean, isToday: boolean) {
+  const todayRing = isToday && !isSelected
+    ? { outline: '2px solid rgba(249,115,22,0.6)', outlineOffset: '-2px' }
+    : {}
+ 
+  if (score === 0) {
+    return {
+      background: isSelected ? 'rgba(255,255,255,0.08)' : 'rgba(255,255,255,0.02)',
+      border: isSelected ? '1.5px solid rgba(255,255,255,0.3)' : '1px solid transparent',
+      ...todayRing,
+    }
   }
-  return days
+ 
+  // Score-to-colour: matches ForgePanel flame palette for visual cohesion
+  let rgb = ''
+  if (score >= 85) rgb = '249, 115, 22'       // blazing orange
+  else if (score >= 65) rgb = '194, 65, 12'   // strong amber
+  else if (score >= 45) rgb = '154, 52, 18'   // warm ember
+  else rgb = '120, 40, 10'                    // low heat
+ 
+  return {
+    background: `radial-gradient(circle at center, rgba(${rgb}, 0.55) 0%, rgba(${rgb}, 0.06) 80%)`,
+    border: isSelected
+      ? `1.5px solid rgba(${rgb}, 1)`
+      : `1px solid rgba(${rgb}, 0.25)`,
+    boxShadow: isSelected ? `0 0 20px rgba(${rgb}, 0.35)` : undefined,
+    ...todayRing,
+  }
+}
+ 
+function formatMins(mins: number): string {
+  const h = Math.floor(mins / 60)
+  const m = mins % 60
+  if (h > 0 && m > 0) return `${h}h ${m}m`
+  if (h > 0) return `${h}h`
+  return `${m}m`
+}
+ 
+function localDateStr(date: Date): string {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
 }
 
-const DAY_LABELS = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa']
-const CELL = 14
-const GAP = 3
 
 export default function AnalyticsCalendar({ selectedDate, onSelectDate }: Props) {
-  const [heatmap, setHeatmap] = useState<DayData[]>([])
-  const [daySessions, setDaySessions] = useState<DaySession[]>([])
-  const [loadingDay, setLoadingDay] = useState(false)
-
+  const [currentMonth, setCurrentMonth] = useState(new Date())
+  // heatmap keyed by YYYY-MM-DD from daily_records
+  const [heatmap, setHeatmap] = useState<Record<string, DayHeat>>({})
+  // all sessions loaded once, filtered client-side per selected day
+  const [allSessions, setAllSessions] = useState<Session[]>([])
+  const [loadingHeat, setLoadingHeat] = useState(true)
+  const [loadingSessions, setLoadingSessions] = useState(true)
+ 
+  const todayStr = localDateStr(new Date())
+ 
+  // Load heatmap (84-day window ending today)
   useEffect(() => {
     fetch('/api/sessions/heatmap')
       .then(r => r.json())
-      .then(data => setHeatmap(Array.isArray(data) ? data : []))
+      .then((data) => {
+        if (!data?.grid) return
+        const map: Record<string, DayHeat> = {}
+        for (const day of data.grid) {
+          if (day.sessionCount > 0) {
+            map[day.date] = {
+              avgFocusScore: day.avgFocusScore,
+              sessionCount: day.sessionCount,
+              totalFocusMinutes: day.totalFocusMinutes,
+            }
+          }
+        }
+        setHeatmap(map)
+      })
+      .catch(() => {})
+      .finally(() => setLoadingHeat(false))
   }, [])
-
+ 
+  // Load all sessions once for the detail panel
   useEffect(() => {
-    if (!selectedDate) return
-    setLoadingDay(true)
-    fetch(`/api/sessions?date=${selectedDate}`)
+    fetch('/api/sessions')
       .then(r => r.json())
-      .then(data => {
-        setDaySessions(Array.isArray(data) ? data : [])
-        setLoadingDay(false)
+      .then((data: Session[]) => {
+        if (Array.isArray(data)) setAllSessions(data)
       })
-  }, [selectedDate])
-
-  const days = getLast12Weeks()
-  const dataByDate = Object.fromEntries(heatmap.map(d => [d.date, d]))
-  const weeks: string[][] = []
-  for (let i = 0; i < days.length; i += 7) weeks.push(days.slice(i, i + 7))
-
-  const today = new Date().toISOString().slice(0, 10)
-
-  // Month labels
-  const monthLabels: { label: string; colIndex: number }[] = []
-  weeks.forEach((week, wi) => {
-    const firstDay = new Date(week[0] + 'T00:00:00')
-    if (firstDay.getDate() <= 7) {
-      monthLabels.push({
-        label: firstDay.toLocaleDateString('en-SG', { month: 'short' }),
-        colIndex: wi,
+      .catch(() => {})
+      .finally(() => setLoadingSessions(false))
+  }, [])
+ 
+  // Calendar grid for current month view
+  const year = currentMonth.getFullYear()
+  const month = currentMonth.getMonth()
+  const firstDay = new Date(year, month, 1).getDay()      // 0 = Sun
+  const daysInMonth = new Date(year, month + 1, 0).getDate()
+  const monthName = currentMonth.toLocaleString('default', { month: 'long', year: 'numeric' })
+ 
+  const days: Array<{ day: number; date: string } | null> = []
+  for (let i = 0; i < firstDay; i++) days.push(null)
+  for (let i = 1; i <= daysInMonth; i++) {
+    const date = new Date(year, month, i)
+    days.push({ day: i, date: localDateStr(date) })
+  }
+ 
+  // Sessions for the selected day
+  const daySessionsRaw = selectedDate
+    ? allSessions.filter(s => s.created_at.slice(0, 10) === selectedDate)
+    : []
+ 
+  // Aggregate for the selected day 
+  const dayHeat = selectedDate ? heatmap[selectedDate] : null
+  const dayTotalMins = dayHeat?.totalFocusMinutes
+    ?? Math.round(daySessionsRaw.reduce((s, x) => s + x.duration_ms, 0) / 60000)
+  const dayAvgScore = dayHeat?.avgFocusScore
+    ?? (daySessionsRaw.length
+      ? Math.round(daySessionsRaw.reduce((s, x) => s + x.focus_score, 0) / daySessionsRaw.length)
+      : 0)
+  const daySessionCount = dayHeat?.sessionCount ?? daySessionsRaw.length
+ 
+  const selectedDateFormatted = selectedDate
+    ? new Date(selectedDate + 'T00:00:00').toLocaleDateString('en-SG', {
+        weekday: 'long', day: 'numeric', month: 'long',
       })
-    }
-  })
-
-  function formatMins(ms: number): string {
-    const m = Math.round(ms / 60000)
-    if (m >= 60) return `${Math.floor(m / 60)}h ${m % 60}m`
-    return `${m}m`
-  }
-
-  const modeColour: Record<string, string> = {
-    'deep-focus': '#a5b4fc',
-    'research': '#6ee7b7',
-    'practice': '#fcd34d',
-  }
-
+    : null
+ 
   return (
     <div>
-      {/* Month labels row */}
-      <div style={{ display: 'flex', marginLeft: '22px', marginBottom: '4px' }}>
-        {weeks.map((_, wi) => {
-          const label = monthLabels.find(m => m.colIndex === wi)
+ 
+      {/* Calendar header  */}
+      <div style={{
+        display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+        marginBottom: '20px',
+      }}>
+        <h2 style={{ fontSize: '20px', fontWeight: 700, color: '#fff', margin: 0 }}>
+          {monthName}
+        </h2>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          <span style={{ fontSize: '11px', color: 'var(--text-faint)' }}>
+            Click a day to see details
+          </span>
+          <div style={{ display: 'flex', gap: '4px' }}>
+            <button
+              onClick={() => setCurrentMonth(new Date(year, month - 1, 1))}
+              style={{
+                background: 'rgba(255,255,255,0.05)', border: '1px solid var(--border-subtle)',
+                color: 'var(--text-muted)', width: '30px', height: '30px',
+                borderRadius: '8px', cursor: 'pointer', fontSize: '14px',
+              }}
+            >‹</button>
+            <button
+              onClick={() => setCurrentMonth(new Date(year, month + 1, 1))}
+              style={{
+                background: 'rgba(255,255,255,0.05)', border: '1px solid var(--border-subtle)',
+                color: 'var(--text-muted)', width: '30px', height: '30px',
+                borderRadius: '8px', cursor: 'pointer', fontSize: '14px',
+              }}
+            >›</button>
+          </div>
+        </div>
+      </div>
+ 
+      {/*Day-of-week labels*/}
+      <div style={{
+        display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)',
+        gap: '10px', marginBottom: '8px', textAlign: 'center',
+      }}>
+        {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(d => (
+          <div key={d} style={{ fontSize: '10px', color: 'var(--text-faint)', fontWeight: 600 }}>
+            {d}
+          </div>
+        ))}
+      </div>
+ 
+      {/*Calendar grid */}
+      <div style={{
+        display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)',
+        gap: '10px', gridAutoRows: '64px',
+      }}>
+        {days.map((d, i) => {
+          if (!d) return <div key={`empty-${i}`} />
+ 
+          const isSelected = d.date === selectedDate
+          const isToday = d.date === todayStr
+          const heat = heatmap[d.date]
+          const score = heat?.avgFocusScore ?? 0
+          const hStyle = getHeatStyle(score, isSelected, isToday)
+ 
           return (
-            <div key={wi} style={{ width: CELL + GAP, flexShrink: 0, fontSize: '9px', color: 'var(--text-faint)' }}>
-              {label?.label ?? ''}
+            <div
+              key={d.date}
+              onClick={() => onSelectDate(d.date)}
+              style={{
+                ...hStyle,
+                borderRadius: '12px',
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                justifyContent: 'center',
+                cursor: 'pointer',
+                transition: 'all 0.15s ease',
+                transform: isSelected ? 'scale(1.04)' : 'scale(1)',
+                position: 'relative',
+              }}
+            >
+              <span style={{
+                fontSize: '15px', fontWeight: isToday ? 700 : 500,
+                color: isToday ? '#f97316' : '#fff',
+              }}>
+                {d.day}
+              </span>
+              {score > 0 && (
+                <span style={{
+                  fontSize: '9px',
+                  color: isSelected ? 'rgba(255,255,255,0.9)' : 'rgba(255,255,255,0.5)',
+                  marginTop: '2px',
+                }}>
+                  {score}°
+                </span>
+              )}
+              {heat && heat.sessionCount > 0 && (
+                <div style={{
+                  position: 'absolute', bottom: '5px',
+                  display: 'flex', gap: '2px',
+                }}>
+                  {Array.from({ length: Math.min(heat.sessionCount, 4) }).map((_, j) => (
+                    <div key={j} style={{
+                      width: '3px', height: '3px', borderRadius: '50%',
+                      background: 'rgba(255,255,255,0.4)',
+                    }} />
+                  ))}
+                </div>
+              )}
             </div>
           )
         })}
       </div>
-
-      <div style={{ display: 'flex', gap: 0 }}>
-        {/* Day labels */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: GAP, marginRight: '4px' }}>
-          {DAY_LABELS.map((d, i) => (
-            <div key={d} style={{
-              height: CELL, width: '18px', fontSize: '8px',
-              color: i % 2 === 1 ? 'var(--text-faint)' : 'transparent',
-              display: 'flex', alignItems: 'center',
-            }}>
-              {d}
-            </div>
-          ))}
-        </div>
-
-        {/* Grid */}
-        <div style={{ display: 'flex', gap: GAP }}>
-          {weeks.map((week, wi) => (
-            <div key={wi} style={{ display: 'flex', flexDirection: 'column', gap: GAP }}>
-              {week.map(date => {
-                const data = dataByDate[date]
-                const score = data?.avgFocusScore ?? 0
-                const isFuture = date > today
-                const isToday = date === today
-                const isSelected = date === selectedDate
-
-                return (
-                  <div
-                    key={date}
-                    onClick={() => !isFuture && data && onSelectDate(date)}
-                    style={{
-                      width: CELL, height: CELL, borderRadius: '3px',
-                      background: isFuture ? 'transparent' : getScoreColour(score),
-                      border: isSelected
-                        ? '1.5px solid #fff'
-                        : isToday
-                          ? '1.5px solid #f97316'
-                          : '1px solid transparent',
-                      cursor: data && !isFuture ? 'pointer' : 'default',
-                      transition: 'transform 0.1s',
-                      flexShrink: 0,
-                    }}
-                    onMouseOver={e => {
-                      if (data) (e.currentTarget as HTMLDivElement).style.transform = 'scale(1.3)'
-                    }}
-                    onMouseOut={e => {
-                      (e.currentTarget as HTMLDivElement).style.transform = 'scale(1)'
-                    }}
-                  />
-                )
-              })}
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* Legend */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '10px', marginLeft: '22px' }}>
-        <span style={{ fontSize: '9px', color: 'var(--text-faint)' }}>Less</span>
-        {[0, 30, 50, 70, 90].map(s => (
-          <div key={s} style={{ width: CELL, height: CELL, borderRadius: '3px', background: getScoreColour(s) }} />
-        ))}
-        <span style={{ fontSize: '9px', color: 'var(--text-faint)' }}>More</span>
-      </div>
-
-      {/* Day detail */}
+ 
+      {/* Selected-day detail*/}
       {selectedDate && (
-        <div style={{ marginTop: '28px' }}>
+        <div style={{ marginTop: '32px' }}>
+ 
+          {/* Day heading */}
           <div style={{
-            fontSize: '13px', fontWeight: 600, color: '#fff', marginBottom: '14px',
+            fontSize: '11px', fontWeight: 600, color: 'var(--text-faint)',
+            textTransform: 'uppercase', letterSpacing: '.1em', marginBottom: '14px',
           }}>
-            {new Date(selectedDate + 'T00:00:00').toLocaleDateString('en-SG', {
-              weekday: 'long', day: 'numeric', month: 'long', year: 'numeric',
-            })}
+            {selectedDateFormatted}
           </div>
-
-          {loadingDay ? (
-            <p style={{ fontSize: '12px', color: 'var(--text-faint)' }}>Loading...</p>
-          ) : daySessions.length === 0 ? (
-            <p style={{ fontSize: '12px', color: 'var(--text-faint)' }}>No sessions on this day.</p>
+ 
+          {loadingSessions ? (
+            <div style={{ color: 'var(--text-faint)', fontSize: '12px', padding: '16px 0' }}>
+              Loading...
+            </div>
+          ) : daySessionsRaw.length === 0 ? (
+            <div style={{
+              background: 'var(--bg-card)', border: '1px solid var(--border-subtle)',
+              borderRadius: '12px', padding: '24px', textAlign: 'center',
+              color: 'var(--text-faint)', fontSize: '13px',
+            }}>
+              No sessions recorded on this day.
+            </div>
           ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-              {daySessions.map(session => (
-                <div key={session.id} style={{
-                  background: 'var(--bg-card)', border: '1px solid var(--border-subtle)',
-                  borderRadius: '14px', padding: '16px',
-                }}>
-                  {/* Session header */}
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '12px' }}>
-                    <div>
-                      <span style={{
-                        fontSize: '10px', padding: '2px 8px', borderRadius: '20px',
-                        color: modeColour[session.mode] ?? '#f97316',
-                        background: 'rgba(255,255,255,0.06)',
-                        border: `1px solid ${modeColour[session.mode] ?? '#f97316'}40`,
-                      }}>
-                        {session.mode.replace('-', ' ').replace(/\b\w/g, c => c.toUpperCase())}
-                      </span>
+            <>
+              {/* Summary row — 3 stat cards */}
+              <div style={{
+                display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)',
+                gap: '10px', marginBottom: '16px',
+              }}>
+                {[
+                  { label: 'Sessions', value: String(daySessionCount) },
+                  { label: 'Focus time', value: formatMins(dayTotalMins) },
+                  { label: 'Avg score', value: `${dayAvgScore}` },
+                ].map(stat => (
+                  <div key={stat.label} style={{
+                    background: 'var(--bg-card)', border: '1px solid var(--border-subtle)',
+                    borderRadius: '12px', padding: '14px', textAlign: 'center',
+                  }}>
+                    <div style={{ fontSize: '22px', fontWeight: 700, color: '#fff', letterSpacing: '-0.5px' }}>
+                      {stat.value}
                     </div>
                     <div style={{
-                      fontSize: '22px', fontWeight: 800, color: '#f97316',
-                      letterSpacing: '-1px',
+                      fontSize: '9px', color: 'var(--text-faint)',
+                      textTransform: 'uppercase', letterSpacing: '.06em', marginTop: '3px',
                     }}>
-                      {session.focus_score}
+                      {stat.label}
                     </div>
                   </div>
-
-                  {/* Commitment */}
-                  <p style={{
-                    fontSize: '12px', color: 'rgba(255,255,255,0.7)',
-                    fontStyle: 'italic', margin: '0 0 12px',
-                  }}>
-                    &ldquo;{session.commitment}&rdquo;
-                    <span style={{ marginLeft: '8px', fontStyle: 'normal' }}>
-                      {session.commitment_met ? '✅' : '❌'}
-                    </span>
-                  </p>
-
-                  {/* Stats row */}
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '8px' }}>
-                    {[
-                      { label: 'Duration', value: formatMins(session.duration_ms) },
-                      {
-                        label: 'Check-ins',
-                        value: `${session.checkins_total - session.checkins_missed}/${session.checkins_total}`,
-                      },
-                      {
-                        label: 'Tab switches',
-                        value: session.tab_mode === 'single-tab' ? String(session.tab_switch_count) : '—',
-                      },
-                      { label: 'Focus score', value: String(session.focus_score) },
-                    ].map(stat => (
-                      <div key={stat.label} style={{
-                        background: 'rgba(255,255,255,0.04)',
-                        borderRadius: '8px', padding: '8px',
-                        textAlign: 'center',
+                ))}
+              </div>
+ 
+              {/* Session list */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                {daySessionsRaw.map((session, idx) => {
+                  const colour = MODE_COLOUR[session.mode] ?? '#f97316'
+                  const durationMins = Math.round(session.duration_ms / 60000)
+                  const time = new Date(session.created_at).toLocaleTimeString('en-SG', {
+                    hour: '2-digit', minute: '2-digit',
+                  })
+ 
+                  return (
+                    <div key={session.id} style={{
+                      background: 'var(--bg-card)',
+                      border: '1px solid var(--border-subtle)',
+                      borderRadius: '12px', padding: '14px 16px',
+                      display: 'flex', alignItems: 'center', gap: '12px',
+                    }}>
+                      {/* Session number */}
+                      <div style={{
+                        width: '26px', height: '26px', borderRadius: '50%',
+                        background: `rgba(${colour === '#a5b4fc' ? '165,180,252' : colour === '#6ee7b7' ? '110,231,183' : '252,211,77'}, 0.12)`,
+                        border: `1px solid ${colour}30`,
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        fontSize: '10px', fontWeight: 700, color: colour, flexShrink: 0,
                       }}>
-                        <div style={{ fontSize: '13px', fontWeight: 700, color: '#fff' }}>
-                          {stat.value}
+                        {idx + 1}
+                      </div>
+ 
+                      {/* Task title + mode */}
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{
+                          fontSize: '13px', fontWeight: 500,
+                          color: 'rgba(255,255,255,0.85)',
+                          whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+                          marginBottom: '3px',
+                        }}>
+                          {session.task_title ?? 'Untitled session'}
                         </div>
-                        <div style={{ fontSize: '8px', color: 'var(--text-faint)', textTransform: 'uppercase', letterSpacing: '.04em', marginTop: '2px' }}>
-                          {stat.label}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                          <span style={{ fontSize: '10px', color: colour }}>
+                            {MODE_LABEL[session.mode] ?? session.mode}
+                          </span>
+                          <span style={{ fontSize: '10px', color: 'var(--text-faint)' }}>
+                            {time} · {durationMins > 0 ? `${durationMins}m` : '< 1m'}
+                          </span>
                         </div>
                       </div>
-                    ))}
-                  </div>
-                </div>
-              ))}
-            </div>
+ 
+                      {/* Score + commitment */}
+                      <div style={{ textAlign: 'right', flexShrink: 0 }}>
+                        <div style={{
+                          fontSize: '18px', fontWeight: 700,
+                          color: session.focus_score >= 75 ? '#f97316'
+                            : session.focus_score >= 50 ? 'rgba(255,255,255,0.7)'
+                            : 'rgba(255,255,255,0.4)',
+                          letterSpacing: '-0.5px',
+                        }}>
+                          {session.focus_score}
+                        </div>
+                        <div style={{ fontSize: '9px', color: 'var(--text-faint)', marginTop: '2px' }}>
+                          {session.commitment_met ? '✓ goal met' : '✗ goal missed'}
+                        </div>
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            </>
           )}
         </div>
       )}

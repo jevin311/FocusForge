@@ -13,8 +13,36 @@ async function getAuthenticatedUser() {
   return { supabase, user }
 }
 
+// Used by AnalyticsPanel and AnalyticsCalendar.
+export async function GET(req: NextRequest) {
+  const auth = await getAuthenticatedUser()
+
+  if (!auth) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
+
+  const { supabase, user } = auth
+ 
+  const { data, error } = await supabase
+    .from('sessions')
+    .select(
+      'id, mode, task_id, task_title, started_at, ended_at, duration_ms, focus_score, commitment_met, self_report_rating, created_at'
+    )
+    .eq('user_id', user.id)
+    .order('created_at', { ascending: false })
+ 
+  if (error) {
+    console.error('Sessions GET error:', error)
+    return NextResponse.json({ error: 'Failed to fetch sessions' }, { status: 500 })
+  }
+ 
+  return NextResponse.json(data ?? [])
+}
+
 interface PostSessionBody {
   mode: StudyMode
+  taskId: string | null
+  taskTitle: string | null
   startedAt: string
   endedAt: string
   durationMs: number
@@ -96,6 +124,8 @@ export async function POST(req: NextRequest) {
     .insert({
       user_id: user.id,
       mode: body.mode,
+      task_id: body.taskId ?? null,
+      task_title: body.taskTitle ?? null,
       started_at: body.startedAt,
       ended_at: body.endedAt,
       duration_ms: body.durationMs,

@@ -209,7 +209,11 @@ export default function TaskItem({ task, onToggle, onDelete, onEdit, onLaunch, o
 
       {/* Delete button */}
       <button
-        onClick={() => onDelete(task.id)}
+        onClick={() => {
+          if (window.confirm(`Are you sure you want to delete "${task.title}"?`)) {
+            onDelete(task.id)
+          }
+        }}
         style={{
           background: 'transparent',
           border: 'none',

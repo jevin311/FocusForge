@@ -49,7 +49,7 @@ function DashboardContent() {
       setUserId(user.id)
       //for profile drop down menu
       setUserName(
-        user.user_metadata?.full_name?.split(' '[0]) ||
+        user.user_metadata?.full_name?.split(' ')[0] ||
         user.user_metadata?.name?.split(' ')[0] ||
         user.email?.split('@')[0] ||
         null
@@ -84,7 +84,13 @@ function DashboardContent() {
     setShowPostSession(true)
   }
 
-   function handleDone() {
+  function handleResume() {
+    setShowPostSession(false)
+    setSessionResult(null)
+    setTimerVisible(true)
+  }
+
+  function handleDone() {
     endSession()
     setShowPostSession(false)
     setSessionResult(null)
@@ -129,7 +135,7 @@ function DashboardContent() {
       )}
 
       {showPostSession && sessionResult && (
-      <PostSessionCard result={sessionResult} onDone={handleDone} />
+      <PostSessionCard result={sessionResult} onDone={handleDone} onResume={handleResume} />
     )}
 
 
