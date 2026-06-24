@@ -5,7 +5,7 @@ import { useEffect, useState } from 'react'
 interface HeatmapDay {
   date: string
   avgFocusScore: number
-  sessionCount: number        // ← camelCase from /api/sessions/heatmap
+  sessionCount: number      
   totalFocusMinutes: number
 }
 
@@ -31,7 +31,7 @@ export default function ForgePanel() {
   useEffect(() => {
     async function fetchStats() {
       try {
-        const res = await fetch('/api/sessions/heatmap')
+        const res = await fetch('/api/heatmap')
         if (!res.ok) throw new Error('Heatmap fetch failed')
         const data = await res.json()
  
