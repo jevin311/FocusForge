@@ -30,12 +30,15 @@ export async function GET(req: NextRequest) {
   const endDateParam = searchParams.get('date')
 
   const endDate = endDateParam && /^\d{4}-\d{2}-\d{2}$/.test(endDateParam)
-    ? endDateParam
-    : new Date().toISOString().split('T')[0]
+  ? endDateParam
+  : (() => {
+      const d = new Date()
+      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+    })()
 
-  const startDate = new Date(endDate)
+  const startDate = new Date(endDate + 'T00:00:00')  // parse as local midnight
   startDate.setDate(startDate.getDate() - HEATMAP_DAYS + 1)
-  const startDateStr = startDate.toISOString().split('T')[0] // Just getting the date part of the javascript date
+  const startDateStr = `${startDate.getFullYear()}-${String(startDate.getMonth() + 1).padStart(2, '0')}-${String(startDate.getDate()).padStart(2, '0')}`
 
   const { data, error } = await supabase
     .from('daily_records')
@@ -59,7 +62,7 @@ export async function GET(req: NextRequest) {
   for (let i = 0; i < HEATMAP_DAYS; i++) {
     const d = new Date(startDate)
     d.setDate(startDate.getDate() + i)
-    const dateStr = d.toISOString().split('T')[0] // to get our string version of date
+    const dateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
     const row = recordsByDate.get(dateStr)
 
     grid.push({

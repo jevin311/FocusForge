@@ -25,11 +25,14 @@ interface Stats {
 }
 
 function calculateStreak(sessions: Session[]): number {
-  const uniqueDates = [...new Set(sessions.map(s => s.created_at.slice(0, 10)))]
-    .sort()
-    .reverse()
+  const uniqueDates = new Set(
+    sessions.map(s => {
+      const d = new Date(s.created_at)
+      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+    })
+  )
  
-  if (uniqueDates.length === 0) return 0
+  if (uniqueDates.size === 0) return 0
  
   // Use local date to avoid timezone shifting streak by a day
   const todayLocal = new Date()
@@ -39,8 +42,8 @@ function calculateStreak(sessions: Session[]): number {
   const cursor = new Date(todayStr + 'T00:00:00')
  
   while (true) {
-    const dateStr = cursor.toISOString().split('T')[0]
-    if (uniqueDates.includes(dateStr)) {
+    const dateStr = `${cursor.getFullYear()}-${String(cursor.getMonth() + 1).padStart(2, '0')}-${String(cursor.getDate()).padStart(2, '0')}`
+    if (uniqueDates.has(dateStr)) {
       streak++
       cursor.setDate(cursor.getDate() - 1)
     } else if (dateStr === todayStr) {

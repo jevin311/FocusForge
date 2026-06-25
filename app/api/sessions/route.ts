@@ -53,6 +53,7 @@ interface PostSessionBody {
   selfReportRating: number
   commitmentMet: boolean
   localDate: string
+  markTaskComplete: boolean
 }
 
 function isValidMode(mode: unknown): mode is StudyMode {
@@ -85,7 +86,8 @@ function validateBody(body: unknown): body is PostSessionBody {
     typeof b.selfReportRating === 'number' &&
     b.selfReportRating >= 1 && b.selfReportRating <= 5 &&
     typeof b.commitmentMet === 'boolean' &&
-    typeof b.localDate === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(b.localDate) // This is just the date format, making sure they are all like 2026-06-26
+    typeof b.localDate === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(b.localDate) &&// This is just the date format, making sure they are all like 2026-06-26
+    typeof (body as Record<string, unknown>).markTaskComplete === 'boolean'
   )
 }
 
@@ -187,6 +189,18 @@ export async function POST(req: NextRequest) {
     // This error is not fatal since the session is logged/saved already
     console.error('daily_records upsert error:', dailyError)
   }
+
+  if (body.markTaskComplete && body.taskId) {
+  const { error: taskError } = await supabase
+    .from('tasks')
+    .update({ completed: true })
+    .eq('id', body.taskId)
+    .eq('user_id', user.id)  //only own tasks
+
+  if (taskError) {
+    console.error('Task completion update error:', taskError)
+  }
+}
 
   return NextResponse.json({
     sessionId: session.id,
