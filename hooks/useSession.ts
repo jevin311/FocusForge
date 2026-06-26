@@ -32,7 +32,7 @@ const DEFAULT_CHECKIN_WINDOW = 15 * 1000
 const getStorage = <T,>(key: string, fallback: T): T => {
   if (typeof window === 'undefined') return fallback;
   const saved = sessionStorage.getItem(`ff_${key}`);
-  try { return saved ? JSON.parse(saved) : fallback; } 
+  try { return saved ? JSON.parse(saved) : fallback; }
   catch { return fallback; }
 }
 
@@ -148,7 +148,7 @@ export function useSession({
   const start = useCallback(() => {
     const savedElapsed = getStorage('elapsed', 0)
     const savedStatus = getStorage<SessionStatus>('status', 'idle')
- 
+
     // Only reset data when genuinely starting fresh (not restoring a paused/active session)
     if (savedElapsed === 0 && savedStatus === 'idle') {
       setElapsedMs(0)
@@ -188,7 +188,7 @@ export function useSession({
     sessionStorage.removeItem('ff_status')
     sessionStorage.removeItem('ff_elapsed')
     sessionStorage.removeItem('ff_checkIns')
-    
+
     return result
   }, [elapsedMs, totalIdleTime, tabSwitchCount, checkIns, clearCheckInAlert])
 
@@ -204,5 +204,6 @@ export function useSession({
     resume,
     end,
     respondToCheckIn,
+    unlockAudio,
   }
 }

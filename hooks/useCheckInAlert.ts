@@ -34,23 +34,32 @@ export function useCheckInAlert() {
       return
     }
 
-    const oscillator = ctx.createOscillator()
-    const gain = ctx.createGain()
+    const play = () => {
+      const oscillator = ctx.createOscillator()
+      const gain = ctx.createGain()
 
-    oscillator.type = 'sine'
-    oscillator.frequency.value = 880 // A5
+      oscillator.type = 'sine'
+      oscillator.frequency.value = 880 // A5
 
-    gain.gain.setValueAtTime(0.0001, ctx.currentTime)
+      gain.gain.setValueAtTime(0.0001, ctx.currentTime)
 
-    // Sound increase nicely, not too sudden
-    gain.gain.exponentialRampToValueAtTime(0.3, ctx.currentTime + 0.05)
-    gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.6)
+      // Sound increase nicely, not too sudden
+      gain.gain.exponentialRampToValueAtTime(0.3, ctx.currentTime + 0.05)
+      gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.6)
 
-    oscillator.connect(gain)
-    gain.connect(ctx.destination)
+      oscillator.connect(gain)
+      gain.connect(ctx.destination)
 
-    oscillator.start()
-    oscillator.stop(ctx.currentTime + 0.6)
+      oscillator.start()
+      oscillator.stop(ctx.currentTime + 0.6)
+    }
+
+    // Need this cos browsers suspend the AudioContext when the tab goes to the background, need to resume first
+    if (ctx.state === 'suspended') {
+      ctx.resume().then(play)
+    } else {
+      play()
+    }
   }, [])
 
   const flashTitle = useCallback((message: string) => {

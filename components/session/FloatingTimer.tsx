@@ -32,9 +32,10 @@ export default function FloatingTimer({ onEndSession }: Props) {
     pause,
     resume,
     respondToCheckIn,
+    unlockAudio,
   } = useSession({
     mode: config?.tabMode ?? 'single-tab',
-    checkInIntervalMs: 25 * 60 * 1000,
+    checkInIntervalMs: 0.1 * 60 * 1000,
     checkInResponseWindowMs: 15 * 1000,
   })
 
@@ -66,8 +67,9 @@ export default function FloatingTimer({ onEndSession }: Props) {
   }, [])
 
 
-  // Tab title timer
+  // Tab title timer, but skip update while check-in alert is flashing so the two don't fight
   useEffect(() => {
+    if (activeCheckIn) return
     if (status === 'active') {
       const elapsedSeconds = Math.floor(elapsedMs / 1000)
       document.title = `⏱ ${formatTime(elapsedSeconds)} — FocusForge`
@@ -75,7 +77,7 @@ export default function FloatingTimer({ onEndSession }: Props) {
       document.title = '⏸ Paused — FocusForge'
     }
     return () => { document.title = 'FocusForge' }
-  }, [elapsedMs, status])
+  }, [elapsedMs, status, activeCheckIn])
 
   if (!config) return null
 
@@ -99,7 +101,7 @@ export default function FloatingTimer({ onEndSession }: Props) {
       checkIns: result?.checkIns ?? [],
       missedCheckInCount: result?.missedCheckInCount ?? 0,
     }
-  
+
     onEndSession(safeResult)
   }
 
@@ -217,7 +219,7 @@ export default function FloatingTimer({ onEndSession }: Props) {
 
       {/* Pause / Resume */}
       <button
-        onClick={status === 'active' ? pause : resume}
+        onClick={() => { unlockAudio(); status === 'active' ? pause() : resume() }}
         style={{
           width: '100%', padding: '11px', marginBottom: '8px',
           background: 'rgba(255,255,255,0.04)',
@@ -226,9 +228,9 @@ export default function FloatingTimer({ onEndSession }: Props) {
           color: 'var(--text-muted)', fontSize: '12px',
           fontWeight: 600, cursor: 'pointer',
         }}
-       >
+      >
         {status === 'active' ? '⏸ Pause' : '▶ Resume'}
-       </button>
+      </button>
 
 
       {/* End session */}
