@@ -1,6 +1,7 @@
 // Calculation of scores for our 3 modes
 
 export type StudyMode = 'deep-focus' | 'research' | 'practice'
+export type TabMode = 'single-tab' | 'multi-tab'
 
 export interface CheckInRecord {
   triggeredAt: number
@@ -17,6 +18,7 @@ export interface FocusScoreInput {
   selfReportRating: number // We let them choose 1-5
   commitmentMet: boolean
   mode: StudyMode
+  tabMode: TabMode // Separate from mode — user's choice in launcher
 }
 
 export interface FocusScoreBreakdown {
@@ -35,32 +37,24 @@ interface ModeProfile {
     selfReport: number
     commitment: number
   }
-  tabSwitchPenaltyPerSwitch: number
-  maxTabSwitchPenalty: number
-  idlePenaltyMultiplier: number // To control our penalry 
 }
 
+// Mode only affects score weights now — tab penalties are driven by tabMode
 export const MODE_SCORE_PROFILES: Record<StudyMode, ModeProfile> = {
   'deep-focus': {
     weights: { checkIn: 0.4, selfReport: 0.3, commitment: 0.3 },
-    tabSwitchPenaltyPerSwitch: 5,
-    maxTabSwitchPenalty: 30,
-    idlePenaltyMultiplier: 1.0,
   },
   practice: {
     weights: { checkIn: 0.35, selfReport: 0.35, commitment: 0.3 },
-    tabSwitchPenaltyPerSwitch: 2,
-    maxTabSwitchPenalty: 30,
-    idlePenaltyMultiplier: 1.0,
   },
   research: {
     weights: { checkIn: 0.3, selfReport: 0.5, commitment: 0.2 },
-    tabSwitchPenaltyPerSwitch: 0, // tracked, but will not penalise them
-    maxTabSwitchPenalty: 0,
-    idlePenaltyMultiplier: 0, // cos they might be reading notes etc on another tab, so its okay, no need to penalise them
   },
 }
 
+// Tab switch and idle penalties only apply when user chose single-tab
+const TAB_SWITCH_PENALTY_PER_SWITCH = 5
+const MAX_TAB_SWITCH_PENALTY = 30
 const MAX_IDLE_PENALTY = 30
 
 function clamp(value: number, min: number, max: number): number {
@@ -70,7 +64,7 @@ function clamp(value: number, min: number, max: number): number {
 function calculateCheckInScore(checkIns: CheckInRecord[], missedCheckInCount: number): number {
   const totalCheckIns = checkIns.length
 
-  // If there was no checkin prompts at all
+  // If there were no check-in prompts at all
   if (totalCheckIns === 0) return 100
 
   const respondedCount = totalCheckIns - missedCheckInCount
@@ -86,16 +80,21 @@ function calculateCommitmentScore(commitmentMet: boolean): number {
   return commitmentMet ? 100 : 0
 }
 
-function calculateTabSwitchPenalty(tabSwitchCount: number, profile: ModeProfile): number {
-  const rawPenalty = tabSwitchCount * profile.tabSwitchPenaltyPerSwitch
-  return Math.min(rawPenalty, profile.maxTabSwitchPenalty)
+function calculateTabSwitchPenalty(tabSwitchCount: number, tabMode: TabMode): number {
+  // Multi-tab users declared they'd be switching — no penalty
+  if (tabMode === 'multi-tab') return 0
+
+  const rawPenalty = tabSwitchCount * TAB_SWITCH_PENALTY_PER_SWITCH
+  return Math.min(rawPenalty, MAX_TAB_SWITCH_PENALTY)
 }
 
-function calculateIdlePenalty(idleTimeMs: number, durationMs: number, profile: ModeProfile): number {
+function calculateIdlePenalty(idleTimeMs: number, durationMs: number, tabMode: TabMode): number {
+  // Multi-tab users may be reading notes in other tabs — no idle penalty
+  if (tabMode === 'multi-tab') return 0
   if (durationMs <= 0) return 0
 
   const idleRatio = clamp(idleTimeMs / durationMs, 0, 1)
-  return idleRatio * MAX_IDLE_PENALTY * profile.idlePenaltyMultiplier
+  return idleRatio * MAX_IDLE_PENALTY
 }
 
 export function calculateFocusScore(input: FocusScoreInput): FocusScoreBreakdown {
@@ -110,8 +109,8 @@ export function calculateFocusScore(input: FocusScoreInput): FocusScoreBreakdown
     selfReportScore * profile.weights.selfReport +
     commitmentScore * profile.weights.commitment
 
-  const tabSwitchPenalty = calculateTabSwitchPenalty(input.tabSwitchCount, profile)
-  const idlePenalty = calculateIdlePenalty(input.idleTimeMs, input.durationMs, profile)
+  const tabSwitchPenalty = calculateTabSwitchPenalty(input.tabSwitchCount, input.tabMode)
+  const idlePenalty = calculateIdlePenalty(input.idleTimeMs, input.durationMs, input.tabMode)
 
   const finalScore = clamp(
     Math.round(weightedBaseScore - tabSwitchPenalty - idlePenalty),

@@ -2,11 +2,8 @@
 import { useEffect, useState, useRef } from 'react'
 import { useSessionStore } from '@/lib/session-store'
 import { useSession } from '@/hooks/useSession'
+import { useRouter } from 'next/navigation'
 import FlameIndicator from './FlameIndicator'
-
-interface Props {
-  onEndSession: (result: import('@/hooks/useSession').SessionResult) => void   // called when user clicks End 
-}
 
 function formatTime(totalSeconds: number): string {
   const h = Math.floor(totalSeconds / 3600)
@@ -18,15 +15,15 @@ function formatTime(totalSeconds: number): string {
   return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`
 }
 
-export default function FloatingTimer({ onEndSession }: Props) {
-  const { config } = useSessionStore()
+export default function FloatingTimer() {
+  const { config, setPendingResult, setUnlockAudioFn } = useSessionStore()
+  const router = useRouter()
   const [isMinimised, setIsMinimised] = useState(false)
 
   const {
     status,
     elapsedMs,
     activeCheckIn,
-    tabSwitchCount,
     start,
     end,
     pause,
@@ -50,11 +47,18 @@ export default function FloatingTimer({ onEndSession }: Props) {
     // If paused, we leave it paused. If active, the tick effect restarts automatically.
     const savedStatus = sessionStorage.getItem('ff_status')
     const parsed = savedStatus ? JSON.parse(savedStatus) : 'idle'
-    if (parsed === 'idle') {
+    // 'active' written by SessionLauncherModal means fresh start, not a restore
+    // 'paused' means restoring a paused session — don't restart
+    if (parsed === 'idle' || parsed === 'active') {
       start()
     }
   }, [])
 
+  // Register unlockAudio into the store so that our SessionLauncherModal can call it
+  // from a user gesture (required by browser autoplay policy, else will not have sound)
+  useEffect(() => {
+    setUnlockAudioFn(unlockAudio)
+  }, [unlockAudio, setUnlockAudioFn])
 
   // Tab visibility for flame
   const [isTabVisible, setIsTabVisible] = useState(true)
@@ -66,14 +70,13 @@ export default function FloatingTimer({ onEndSession }: Props) {
     return () => document.removeEventListener('visibilitychange', handleVisibility)
   }, [])
 
-
-  // Tab title timer, but skip update while check-in alert is flashing so the two don't fight
+  // Tab title timer — skip update while check-in alert is flashing so the two don't fight
   useEffect(() => {
-    if (activeCheckIn) return
+    if (activeCheckIn) return // let useCheckInAlert own the title during a check-in
     if (status === 'active') {
       const elapsedSeconds = Math.floor(elapsedMs / 1000)
       document.title = `⏱ ${formatTime(elapsedSeconds)} — FocusForge`
-    } else if (status === "paused") {
+    } else if (status === 'paused') {
       document.title = '⏸ Paused — FocusForge'
     }
     return () => { document.title = 'FocusForge' }
@@ -101,8 +104,9 @@ export default function FloatingTimer({ onEndSession }: Props) {
       checkIns: result?.checkIns ?? [],
       missedCheckInCount: result?.missedCheckInCount ?? 0,
     }
-
-    onEndSession(safeResult)
+    // Store result in Zustand so dashboard can show PostSessionCard
+    setPendingResult(safeResult)
+    router.push('/dashboard')
   }
 
   const modeColour: Record<string, string> = {
@@ -231,7 +235,6 @@ export default function FloatingTimer({ onEndSession }: Props) {
       >
         {status === 'active' ? '⏸ Pause' : '▶ Resume'}
       </button>
-
 
       {/* End session */}
       <button

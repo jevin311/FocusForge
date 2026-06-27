@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react'
 import TaskItem from './TaskItem'
 import DatePicker from './DatePicker'
 import SessionLauncherModal from './session/SessionLauncherModal'
+import { useSessionStore } from '@/lib/session-store'
 
 interface Task {
   id: string
@@ -24,6 +25,16 @@ export default function TaskList({ userId }: Props) {
   const [adding, setAdding] = useState(false)
   const [dueDate, setDueDate] = useState('')
   const [launchTask, setLaunchTask] = useState<Task | null>(null)
+
+  const pendingResult = useSessionStore((s) => s.pendingResult)
+
+  // Re-fetch tasks when post-session card is dismissed so task completion
+  // from the session reflects immediately in the dashboard, ellse it will be as if its not completed yet
+  useEffect(() => {
+    if (!pendingResult && userId) {
+      fetchTasks(userId)
+    }
+  }, [pendingResult, userId])
 
 
   useEffect(() => {
@@ -104,20 +115,20 @@ export default function TaskList({ userId }: Props) {
       body: JSON.stringify({ id, due_date }),
     })
   }
-const sortTasks = (a: Task, b: Task) => {
-  // If both have no due date, maintain original order
-  if (!a.due_date && !b.due_date) return 0
-  // If a has no due date, push it to the bottom
-  if (!a.due_date) return 1
-  // If b has no due date, push it to the bottom
-  if (!b.due_date) return -1
-  
-  // Otherwise, sort chronologically (earliest/most urgent first)
-  return new Date(a.due_date).getTime() - new Date(b.due_date).getTime()
-}
+  const sortTasks = (a: Task, b: Task) => {
+    // If both have no due date, maintain original order
+    if (!a.due_date && !b.due_date) return 0
+    // If a has no due date, push it to the bottom
+    if (!a.due_date) return 1
+    // If b has no due date, push it to the bottom
+    if (!b.due_date) return -1
 
-const pending = tasks.filter(t => !t.completed).sort(sortTasks)
-const completed = tasks.filter(t => t.completed).sort(sortTasks)
+    // Otherwise, sort chronologically (earliest/most urgent first)
+    return new Date(a.due_date).getTime() - new Date(b.due_date).getTime()
+  }
+
+  const pending = tasks.filter(t => !t.completed).sort(sortTasks)
+  const completed = tasks.filter(t => t.completed).sort(sortTasks)
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', height: '100%' }}>
@@ -176,64 +187,64 @@ const completed = tasks.filter(t => t.completed).sort(sortTasks)
         </p>
       )}
 
-          {/* Two column layout */}
-    {!loading && (
-      <div style={{
-        display: 'grid',
-        gridTemplateColumns: '1fr 1fr',
-        gap: '16px',
-        flex: 1,
-        minHeight: 0,
-      }}>
+      {/* Two column layout */}
+      {!loading && (
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: '1fr 1fr',
+          gap: '16px',
+          flex: 1,
+          minHeight: 0,
+        }}>
 
-        {/* Left — In Progress */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-          <div style={{
-            fontSize: '9px', color: 'var(--text-faint)',
-            textTransform: 'uppercase', letterSpacing: '.08em',
-          }}>
-            In progress · {pending.length}
+          {/* Left — In Progress */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+            <div style={{
+              fontSize: '9px', color: 'var(--text-faint)',
+              textTransform: 'uppercase', letterSpacing: '.08em',
+            }}>
+              In progress · {pending.length}
+            </div>
+            {pending.length === 0 && (
+              <p style={{ color: 'var(--text-faint)', fontSize: '12px', padding: '12px 0' }}>
+                No tasks yet — add one above.
+              </p>
+            )}
+            {pending.map(task => (
+              <TaskItem
+                key={task.id} task={task}
+                onToggle={toggleTask} onDelete={deleteTask}
+                onEdit={editTask} onLaunch={setLaunchTask}
+                onEditDate={editDateTask}
+              />
+            ))}
           </div>
-          {pending.length === 0 && (
-            <p style={{ color: 'var(--text-faint)', fontSize: '12px', padding: '12px 0' }}>
-              No tasks yet — add one above.
-            </p>
-          )}
-          {pending.map(task => (
-            <TaskItem
-              key={task.id} task={task}
-              onToggle={toggleTask} onDelete={deleteTask}
-              onEdit={editTask} onLaunch={setLaunchTask}
-              onEditDate={editDateTask}
-            />
-          ))}
-        </div>
 
-        {/* Right — Completed */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-          <div style={{
-            fontSize: '9px', color: 'var(--text-faint)',
-            textTransform: 'uppercase', letterSpacing: '.08em',
-          }}>
-            Completed · {completed.length}
+          {/* Right — Completed */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+            <div style={{
+              fontSize: '9px', color: 'var(--text-faint)',
+              textTransform: 'uppercase', letterSpacing: '.08em',
+            }}>
+              Completed · {completed.length}
+            </div>
+            {completed.length === 0 && (
+              <p style={{ color: 'var(--text-faint)', fontSize: '12px', padding: '12px 0' }}>
+                Complete a task to see it here.
+              </p>
+            )}
+            {completed.map(task => (
+              <TaskItem
+                key={task.id} task={task}
+                onToggle={toggleTask} onDelete={deleteTask}
+                onEdit={editTask} onLaunch={setLaunchTask}
+                onEditDate={editDateTask}
+              />
+            ))}
           </div>
-          {completed.length === 0 && (
-            <p style={{ color: 'var(--text-faint)', fontSize: '12px', padding: '12px 0' }}>
-              Complete a task to see it here.
-            </p>
-          )}
-          {completed.map(task => (
-            <TaskItem
-              key={task.id} task={task}
-              onToggle={toggleTask} onDelete={deleteTask}
-              onEdit={editTask} onLaunch={setLaunchTask}
-              onEditDate={editDateTask}
-            />
-          ))}
-        </div>
 
-      </div>
-    )}
+        </div>
+      )}
 
       {launchTask && (
         <SessionLauncherModal

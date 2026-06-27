@@ -8,9 +8,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { toast } from 'sonner'
-import FloatingTimer from '@/components/session/FloatingTimer'
 import { useSessionStore } from '@/lib/session-store'
-import { SessionResult } from '@/hooks/useSession'
 import PostSessionCard from '@/components/session/PostSessionCard'
 
 function DashboardContent() {
@@ -22,32 +20,17 @@ function DashboardContent() {
   const [userId, setUserId] = useState<string | null>(null)
   const [userName, setUserName] = useState<string | null>(null)
 
-  const { isActive, config } = useSessionStore()
-  const [timerVisible, setTimerVisible] = useState(false)
-  const [showPostSession, setShowPostSession] = useState(false)
-  const [sessionResult, setSessionResult] = useState<SessionResult | null>(null)
-  const endSession = useSessionStore((s) => s.endSession)
-
-  // Only show timer if store says active AND we have a config
-  // This prevents the timer from showing on refresh with stale state
-  useEffect(() => {
-    if (isActive && config) {
-      setTimerVisible(true)
-    }
-  }, [isActive, config])
+  const { pendingResult, setPendingResult, endSession } = useSessionStore()
 
   useEffect(() => {
     async function init() {
       // Always get user
-      const {
-        data: { user },
-      } = await supabase.auth.getUser()
-
+      const { data: { user } } = await supabase.auth.getUser()
       if (!user) return
 
       // Needed for TaskList
       setUserId(user.id)
-      //for profile drop down menu
+      // For profile drop down menu
       setUserName(
         user.user_metadata?.full_name?.split(' ')[0] ||
         user.user_metadata?.name?.split(' ')[0] ||
@@ -55,12 +38,9 @@ function DashboardContent() {
         null
       )
 
-
       // Welcome toast
       const loginType = searchParams.get('login')
-
       if (!loginType || toastShown.current) return
-
       toastShown.current = true
 
       const name =
@@ -76,26 +56,24 @@ function DashboardContent() {
     init()
   }, [])
 
-  //post session summary card
-
-  function handleEndSession(result: SessionResult) {
-    setTimerVisible(false) // 1. Hide the timer
-    setSessionResult(result) // 3. Show post session card
-    setShowPostSession(true)
-  }
+  // Post session summary card handlers
 
   function handleResume() {
-    setShowPostSession(false)
-    setSessionResult(null)
-    setTimerVisible(true)
+    // Restore session as active in sessionStorage so FloatingTimer resumes
+    // from where it left off — elapsed time is preserved
+    sessionStorage.setItem('ff_status', JSON.stringify('active'))
+    setPendingResult(null)
   }
 
   function handleDone() {
+    // Clear session storage only when user confirms done — not on end() itself
+    // so that "Return to timer" can still restore elapsed time
+    sessionStorage.removeItem('ff_status')
+    sessionStorage.removeItem('ff_elapsed')
+    sessionStorage.removeItem('ff_checkIns')
     endSession()
-    setShowPostSession(false)
-    setSessionResult(null)
+    setPendingResult(null)
   }
-
 
   return (
     <div
@@ -106,10 +84,9 @@ function DashboardContent() {
         overflow: 'hidden',
       }}
     >
-      
-      {/* extracted sidebar as component */}
-      <Sidebar userName={userName}/>
-      
+      {/* Extracted sidebar as component */}
+      <Sidebar userName={userName} />
+
       {/* Forge panel */}
       <ForgePanel />
 
@@ -129,16 +106,14 @@ function DashboardContent() {
         <TaskList userId={userId} />
       </div>
 
-      {/* Timer — only when timerVisible, never on page load */}
-      {timerVisible && (
-        <FloatingTimer onEndSession={handleEndSession} />
+      {/* Post session card — shown when user ends session from any page */}
+      {pendingResult && (
+        <PostSessionCard
+          result={pendingResult}
+          onDone={handleDone}
+          onResume={handleResume}
+        />
       )}
-
-      {showPostSession && sessionResult && (
-      <PostSessionCard result={sessionResult} onDone={handleDone} onResume={handleResume} />
-    )}
-
-
     </div>
   )
 }

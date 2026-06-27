@@ -36,11 +36,11 @@ export default function PostSessionCard({ result, onDone, onResume }: Props) {
     if (!canSubmit || !config) return
     setSaving(true)
     setSaveError(null)
-    
+
     //local time-stamp
     const endedAtDate = new Date()
     const startedAtDate = new Date(endedAtDate.getTime() - result.durationMs)
-    
+
     //format yyyy-mm-dd
     const localDate = new Date(endedAtDate.getTime() - endedAtDate.getTimezoneOffset() * 60000)
       .toISOString()
@@ -48,6 +48,7 @@ export default function PostSessionCard({ result, onDone, onResume }: Props) {
 
     const payload = {
       mode: config.mode,
+      tabMode: config.tabMode,
       taskId: config.taskId ?? null,
       taskTitle: config.taskTitle ?? null,
       startedAt: startedAtDate.toISOString(),
@@ -69,12 +70,12 @@ export default function PostSessionCard({ result, onDone, onResume }: Props) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
       })
-      
+
       if (!res.ok) {
         const err = await res.json().catch(() => ({}))
         throw new Error(err.detail ?? err.error ?? `HTTP ${res.status}`)
       }
- 
+
       setSubmitted(true)
     } catch (error) {
       console.error('Submission error:', error)
@@ -88,15 +89,16 @@ export default function PostSessionCard({ result, onDone, onResume }: Props) {
 
   const scoreBreakdown = selfRating > 0 && commitmentMet !== null
     ? calculateFocusScore({
-        durationMs: result.durationMs,
-        idleTimeMs: result.idleTimeMs,
-        tabSwitchCount: result.tabSwitchCount,
-        checkIns: result.checkIns,
-        missedCheckInCount: result.missedCheckInCount,
-        selfReportRating: selfRating,
-        commitmentMet: commitmentMet!,
-        mode: config.mode,
-      })
+      durationMs: result.durationMs,
+      idleTimeMs: result.idleTimeMs,
+      tabSwitchCount: result.tabSwitchCount,
+      checkIns: result.checkIns,
+      missedCheckInCount: result.missedCheckInCount,
+      selfReportRating: selfRating,
+      commitmentMet: commitmentMet!,
+      mode: config.mode,
+      tabMode: config.tabMode,
+    })
     : null
 
   const modeColour: Record<string, string> = {
@@ -291,7 +293,7 @@ export default function PostSessionCard({ result, onDone, onResume }: Props) {
               </div>
             )}
 
-             {/* ── Save button ── */}
+            {/* ── Save button ── */}
             <button
               onClick={handleSubmit}
               disabled={!canSubmit || saving}
@@ -309,7 +311,7 @@ export default function PostSessionCard({ result, onDone, onResume }: Props) {
             >
               {saving ? 'Saving...' : 'Save Session'}
             </button>
- 
+
             {/* ── Return to timer ── */}
             <button
               onClick={onResume}

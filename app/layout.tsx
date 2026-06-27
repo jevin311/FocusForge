@@ -2,6 +2,7 @@ import "./globals.css";
 import { Toaster } from "sonner"
 import { Geist } from "next/font/google";
 import { cn } from "@/lib/utils";
+import GlobalFloatingTimer from "@/components/session/GlobalFloatingTimer";
 
 const geist = Geist({ subsets: ['latin'], variable: '--font-sans' });
 
@@ -15,6 +16,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="en" className={cn("font-sans", geist.variable)}>
       <body>
         {children}
+        <GlobalFloatingTimer />
         {/*toaster is for the pop up when theres an error/sonner*/}
         <Toaster position="top-center" richColors theme="dark" />
       </body>

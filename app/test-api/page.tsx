@@ -28,6 +28,7 @@ export default function TestApiPage() {
           selfReportRating: 4,
           commitmentMet: true,
           localDate: new Date().toLocaleDateString('en-CA'),
+          markTaskComplete: false,
         }),
       })
       const data = await res.json()

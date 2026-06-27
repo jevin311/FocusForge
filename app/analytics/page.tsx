@@ -10,27 +10,27 @@ interface HeatDay {
   avgFocusScore: number
   sessionCount: number
 }
- 
+
 function StreakHeatmap() {
   const [grid, setGrid] = useState<HeatDay[]>([])
- 
+
   useEffect(() => {
     fetch('/api/sessions/heatmap')
       .then(r => r.json())
       .then(data => { if (data?.grid) setGrid(data.grid) })
-      .catch(() => {})
+      .catch(() => { })
   }, [])
 
-   const weeks: HeatDay[][] = []
+  const weeks: HeatDay[][] = []
   for (let i = 0; i < grid.length; i += 7) {
     weeks.push(grid.slice(i, i + 7))
   }
- 
+
   const todayStr = (() => {
     const d = new Date()
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
   })()
- 
+
   function cellColour(score: number): string {
     if (score === 0) return 'rgba(255,255,255,0.04)'
     if (score >= 85) return 'rgba(249,115,22,0.85)'
@@ -38,7 +38,7 @@ function StreakHeatmap() {
     if (score >= 45) return 'rgba(154,52,18,0.65)'
     return 'rgba(100,35,10,0.55)'
   }
- 
+
   return (
     <div style={{
       background: 'var(--bg-card)', border: '1px solid var(--border-subtle)',
@@ -95,7 +95,7 @@ function AnalyticsContent() {
     const d = new Date()
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
   })
- 
+
   useEffect(() => {
     const supabase = createClient()
     supabase.auth.getUser().then(({ data: { user } }) => {
@@ -117,10 +117,10 @@ function AnalyticsContent() {
       overflow: 'hidden',
       background: '#0e0c0c',
     }}>
- 
+
       {/* Sidebar */}
       <Sidebar userName={userName} />
- 
+
       {/*Left panel — stat cards + heatmap strip */}
       <div style={{
         borderRight: '1px solid var(--border-subtle)',
@@ -131,7 +131,7 @@ function AnalyticsContent() {
         gap: '16px',
         background: 'radial-gradient(ellipse 280px 200px at 50% 0%, rgba(160,55,8,0.1) 0%, transparent 60%)',
       }}>
- 
+
         {/* Panel heading */}
         <div style={{
           fontSize: '16px', fontWeight: 700, color: '#fff',
@@ -139,14 +139,14 @@ function AnalyticsContent() {
         }}>
           Your Stats
         </div>
- 
+
         {/* 12-week heatmap strip */}
         <StreakHeatmap />
- 
+
         {/* Stat cards */}
         <AnalyticsPanel />
       </div>
- 
+
       {/* Right panel — calendar + day detail */}
       <div style={{
         overflowY: 'auto',
@@ -156,20 +156,20 @@ function AnalyticsContent() {
           #0e0c0c
         `,
       }}>
- 
+
         {/* Calendar heading */}
         <div style={{
           fontSize: '16px', fontWeight: 700, color: '#fff', marginBottom: '20px',
         }}>
           Session History
         </div>
- 
+
         <AnalyticsCalendar
           selectedDate={selectedDate}
           onSelectDate={setSelectedDate}
         />
       </div>
- 
+
     </div>
   )
 }

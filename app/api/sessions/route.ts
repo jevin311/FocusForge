@@ -22,7 +22,7 @@ export async function GET(req: NextRequest) {
   }
 
   const { supabase, user } = auth
- 
+
   const { data, error } = await supabase
     .from('sessions')
     .select(
@@ -30,17 +30,18 @@ export async function GET(req: NextRequest) {
     )
     .eq('user_id', user.id)
     .order('created_at', { ascending: false })
- 
+
   if (error) {
     console.error('Sessions GET error:', error)
     return NextResponse.json({ error: 'Failed to fetch sessions' }, { status: 500 })
   }
- 
+
   return NextResponse.json(data ?? [])
 }
 
 interface PostSessionBody {
   mode: StudyMode
+  tabMode: 'single-tab' | 'multi-tab'
   taskId: string | null
   taskTitle: string | null
   startedAt: string
@@ -87,7 +88,8 @@ function validateBody(body: unknown): body is PostSessionBody {
     b.selfReportRating >= 1 && b.selfReportRating <= 5 &&
     typeof b.commitmentMet === 'boolean' &&
     typeof b.localDate === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(b.localDate) &&// This is just the date format, making sure they are all like 2026-06-26
-    typeof (body as Record<string, unknown>).markTaskComplete === 'boolean'
+    typeof (body as Record<string, unknown>).markTaskComplete === 'boolean' &&
+    (b.tabMode === 'single-tab' || b.tabMode === 'multi-tab')
   )
 }
 
@@ -118,6 +120,7 @@ export async function POST(req: NextRequest) {
     selfReportRating: body.selfReportRating,
     commitmentMet: body.commitmentMet,
     mode: body.mode,
+    tabMode: body.tabMode,
   })
 
   // Insert the session row
@@ -191,16 +194,16 @@ export async function POST(req: NextRequest) {
   }
 
   if (body.markTaskComplete && body.taskId) {
-  const { error: taskError } = await supabase
-    .from('tasks')
-    .update({ completed: true })
-    .eq('id', body.taskId)
-    .eq('user_id', user.id)  //only own tasks
+    const { error: taskError } = await supabase
+      .from('tasks')
+      .update({ completed: true })
+      .eq('id', body.taskId)
+      .eq('user_id', user.id)  //only own tasks
 
-  if (taskError) {
-    console.error('Task completion update error:', taskError)
+    if (taskError) {
+      console.error('Task completion update error:', taskError)
+    }
   }
-}
 
   return NextResponse.json({
     sessionId: session.id,

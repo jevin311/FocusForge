@@ -1,7 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import {
   calculateFocusScore,
-  MODE_SCORE_PROFILES,
 } from '@/lib/scoring/calculateFocusScore'
 import type { FocusScoreInput, CheckInRecord } from '@/lib/scoring/calculateFocusScore'
 
@@ -19,7 +18,7 @@ function makeCheckIns(total: number, missedCount: number): CheckInRecord[] {
   })
 }
 
-// Base input for reuse across tests
+// Base input for reuse across tests — single-tab by default
 const baseInput: FocusScoreInput = {
   durationMs: HOUR_MS,
   idleTimeMs: 0,
@@ -29,6 +28,7 @@ const baseInput: FocusScoreInput = {
   selfReportRating: 5,
   commitmentMet: true,
   mode: 'deep-focus',
+  tabMode: 'single-tab',
 }
 
 //score boundary
@@ -43,6 +43,7 @@ describe('score bounds', () => {
       selfReportRating: 1,
       commitmentMet: false,
       mode: 'deep-focus',
+      tabMode: 'single-tab',
     })
     expect(result.finalScore).toBeGreaterThanOrEqual(0)
   })
@@ -60,20 +61,18 @@ describe('deep-focus mode', () => {
     expect(result.finalScore).toBe(100)
   })
 
-  it('tab switches reduce the score', () => {
+  it('tab switches reduce the score in single-tab mode', () => {
     const clean = calculateFocusScore({ ...baseInput, tabSwitchCount: 0 })
     const switchy = calculateFocusScore({ ...baseInput, tabSwitchCount: 5 })
     expect(clean.finalScore).toBeGreaterThan(switchy.finalScore)
   })
 
-  it('tab switch penalty is capped at maxTabSwitchPenalty', () => {
+  it('tab switch penalty is capped at max', () => {
     const manySwitch = calculateFocusScore({ ...baseInput, tabSwitchCount: 999 })
-    expect(manySwitch.tabSwitchPenalty).toBe(
-      MODE_SCORE_PROFILES['deep-focus'].maxTabSwitchPenalty
-    )
+    expect(manySwitch.tabSwitchPenalty).toBe(30)
   })
 
-  it('idle time reduces the score', () => {
+  it('idle time reduces the score in single-tab mode', () => {
     const focused = calculateFocusScore({ ...baseInput, idleTimeMs: 0 })
     const idle = calculateFocusScore({ ...baseInput, idleTimeMs: HOUR_MS * 0.5 })
     expect(focused.finalScore).toBeGreaterThan(idle.finalScore)
@@ -98,24 +97,31 @@ describe('deep-focus mode', () => {
   })
 })
 
+// multi-tab mode
+describe('multi-tab mode', () => {
+  const multiTabBase: FocusScoreInput = { ...baseInput, tabMode: 'multi-tab' }
+
+  it('tab switches do not apply any penalty in multi-tab mode', () => {
+    const result = calculateFocusScore({ ...multiTabBase, tabSwitchCount: 50 })
+    expect(result.tabSwitchPenalty).toBe(0)
+  })
+
+  it('idle time does not apply any penalty in multi-tab mode', () => {
+    const result = calculateFocusScore({ ...multiTabBase, idleTimeMs: HOUR_MS * 0.9 })
+    expect(result.idlePenalty).toBe(0)
+  })
+
+  it('perfect multi-tab session scores 100', () => {
+    const result = calculateFocusScore(multiTabBase)
+    expect(result.finalScore).toBe(100)
+  })
+})
+
 //research mode
 describe('research mode', () => {
   const researchBase: FocusScoreInput = { ...baseInput, mode: 'research' }
 
-  it('tab switches do not apply any penalty', () => {
-    const result = calculateFocusScore({ ...researchBase, tabSwitchCount: 50 })
-    expect(result.tabSwitchPenalty).toBe(0)
-  })
-
-  it('idle time does not apply any penalty', () => {
-    const result = calculateFocusScore({
-      ...researchBase,
-      idleTimeMs: HOUR_MS * 0.9,
-    })
-    expect(result.idlePenalty).toBe(0)
-  })
-
-  it('self report carries the highest weight', () => {
+  it('self report carries the highest weight in research mode', () => {
     const highSelf = calculateFocusScore({
       ...researchBase,
       selfReportRating: 5,
@@ -148,26 +154,12 @@ describe('practice mode', () => {
     expect(result.finalScore).toBe(100)
   })
 
-  it('tab switch penalty is lower than deep-focus for same switch count', () => {
-    const deepFocus = calculateFocusScore({
-      ...baseInput,
-      mode: 'deep-focus',
-      tabSwitchCount: 5,
-    })
-    const practice = calculateFocusScore({
-      ...practiceBase,
-      tabSwitchCount: 5,
-    })
-    expect(practice.tabSwitchPenalty).toBeLessThan(deepFocus.tabSwitchPenalty)
-  })
-
-  it('idle time still penalises in practice mode', () => {
+  it('idle time still penalises in practice mode with single-tab', () => {
     const focused = calculateFocusScore({ ...practiceBase, idleTimeMs: 0 })
     const idle = calculateFocusScore({ ...practiceBase, idleTimeMs: HOUR_MS * 0.5 })
     expect(focused.finalScore).toBeGreaterThan(idle.finalScore)
   })
 })
-
 
 //checkin scoring
 describe('check-in scoring', () => {

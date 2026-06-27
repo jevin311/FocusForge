@@ -43,10 +43,13 @@ export default function SessionLauncherModal({ task, onClose }: Props) {
   const [tabMode, setTabMode] = useState<TabMode | null>(null)
   const [commitment, setCommitment] = useState('')
 
-  const startSession = useSessionStore((s) => s.startSession)
+  const { startSession, unlockAudioFn } = useSessionStore()
 
   function handleStart() {
     if (!mode || !timerType || !tabMode || !commitment.trim()) return
+
+    // Unlock AudioContext from this user gesture so that our chime works later
+    unlockAudioFn?.()
 
     const config: SessionConfig = {
       taskId: task.id,
@@ -58,21 +61,22 @@ export default function SessionLauncherModal({ task, onClose }: Props) {
       commitment,
     }
 
-      startSession(config)
-      onClose()
-    }
+    sessionStorage.setItem('ff_status', JSON.stringify('active'))
+    startSession(config)
+    onClose()
+  }
 
-    return (
-      // Backdrop
-      <div
-        onClick={onClose}
-        style={{
-          position: 'fixed', inset: 0,
-          background: 'rgba(0,0,0,0.7)',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          zIndex: 100, backdropFilter: 'blur(4px)',
-        }}
-      >
+  return (
+    // Backdrop
+    <div
+      onClick={onClose}
+      style={{
+        position: 'fixed', inset: 0,
+        background: 'rgba(0,0,0,0.7)',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        zIndex: 100, backdropFilter: 'blur(4px)',
+      }}
+    >
 
       {/* Modal — stop click propagating to backdrop */}
       <div
