@@ -43,10 +43,13 @@ export default function SessionLauncherModal({ task, onClose }: Props) {
   const [tabMode, setTabMode] = useState<TabMode | null>(null)
   const [commitment, setCommitment] = useState('')
 
-  const startSession = useSessionStore((s) => s.startSession)
+  const { startSession, unlockAudioFn } = useSessionStore()
 
   function handleStart() {
     if (!mode || !timerType || !tabMode || !commitment.trim()) return
+
+    // Unlock AudioContext from this user gesture so that our chime works later
+    unlockAudioFn?.()
 
     const config: SessionConfig = {
       taskId: task.id,

@@ -16,7 +16,7 @@ function formatTime(totalSeconds: number): string {
 }
 
 export default function FloatingTimer() {
-  const { config, setPendingResult } = useSessionStore()
+  const { config, setPendingResult, setUnlockAudioFn } = useSessionStore()
   const router = useRouter()
   const [isMinimised, setIsMinimised] = useState(false)
 
@@ -53,6 +53,12 @@ export default function FloatingTimer() {
       start()
     }
   }, [])
+
+  // Register unlockAudio into the store so that our SessionLauncherModal can call it
+  // from a user gesture (required by browser autoplay policy, else will not have sound)
+  useEffect(() => {
+    setUnlockAudioFn(unlockAudio)
+  }, [unlockAudio, setUnlockAudioFn])
 
   // Tab visibility for flame
   const [isTabVisible, setIsTabVisible] = useState(true)

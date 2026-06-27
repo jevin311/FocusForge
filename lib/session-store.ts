@@ -8,9 +8,11 @@ interface SessionStore {
   config: SessionConfig | null
   startedAt: Date | null
   pendingResult: SessionResult | null
+  unlockAudioFn: (() => void) | null
   startSession: (config: SessionConfig) => void
   endSession: () => void
   setPendingResult: (result: SessionResult | null) => void
+  setUnlockAudioFn: (fn: () => void) => void
 }
 
 export const useSessionStore = create<SessionStore>()(
@@ -20,6 +22,7 @@ export const useSessionStore = create<SessionStore>()(
       config: null,
       startedAt: null,
       pendingResult: null,
+      unlockAudioFn: null,
 
       startSession: (config) => set({
         isActive: true,
@@ -36,6 +39,7 @@ export const useSessionStore = create<SessionStore>()(
       }),
 
       setPendingResult: (result) => set({ pendingResult: result }),
+      setUnlockAudioFn: (fn) => set({ unlockAudioFn: fn }),
     }),
     {
       name: 'focusforge-session',
