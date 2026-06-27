@@ -1,37 +1,50 @@
 import { create } from 'zustand'
 import { SessionConfig } from '@/types/session'
 import { persist } from 'zustand/middleware'
-
+import type { SessionResult } from '@/hooks/useSession'
 
 interface SessionStore {
-    isActive: boolean
-    config: SessionConfig | null
-    startedAt: Date | null
-    startSession: (config: SessionConfig) => void
-    endSession: () => void
+  isActive: boolean
+  config: SessionConfig | null
+  startedAt: Date | null
+  pendingResult: SessionResult | null
+  startSession: (config: SessionConfig) => void
+  endSession: () => void
+  setPendingResult: (result: SessionResult | null) => void
 }
 
 export const useSessionStore = create<SessionStore>()(
   persist(
     (set) => ({
-    isActive: false,
-    config: null,
-    startedAt: null,
+      isActive: false,
+      config: null,
+      startedAt: null,
+      pendingResult: null,
 
-    startSession: (config) => set({
+      startSession: (config) => set({
         isActive: true,
         config,
-        startedAt: new Date()
-    }),
+        startedAt: new Date(),
+        pendingResult: null,
+      }),
 
-    endSession: () => set({
+      endSession: () => set({
         isActive: false,
         config: null,
-        startedAt: null
-    }),}),
+        startedAt: null,
+        pendingResult: null,
+      }),
 
+      setPendingResult: (result) => set({ pendingResult: result }),
+    }),
     {
       name: 'focusforge-session',
+      // Don't persist pendingResult since it should not survive a page refresh, else will have alot of errors and get stuck on tht page
+      partialize: (state) => ({
+        isActive: state.isActive,
+        config: state.config,
+        startedAt: state.startedAt,
+      }),
       onRehydrateStorage: () => (state) => {
         if (state?.startedAt) {
           state.startedAt = new Date(state.startedAt)

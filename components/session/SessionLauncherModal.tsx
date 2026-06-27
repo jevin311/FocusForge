@@ -58,21 +58,22 @@ export default function SessionLauncherModal({ task, onClose }: Props) {
       commitment,
     }
 
-      startSession(config)
-      onClose()
-    }
+    sessionStorage.setItem('ff_status', JSON.stringify('active'))
+    startSession(config)
+    onClose()
+  }
 
-    return (
-      // Backdrop
-      <div
-        onClick={onClose}
-        style={{
-          position: 'fixed', inset: 0,
-          background: 'rgba(0,0,0,0.7)',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          zIndex: 100, backdropFilter: 'blur(4px)',
-        }}
-      >
+  return (
+    // Backdrop
+    <div
+      onClick={onClose}
+      style={{
+        position: 'fixed', inset: 0,
+        background: 'rgba(0,0,0,0.7)',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        zIndex: 100, backdropFilter: 'blur(4px)',
+      }}
+    >
 
       {/* Modal — stop click propagating to backdrop */}
       <div

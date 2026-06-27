@@ -60,7 +60,7 @@ export default function FlameIndicator({ dimmed }: Props) {
         transformOrigin: 'bottom center',
         transition: 'background 0.6s ease',
       }} />
-      
+
       {/* Glow */}
       <div style={{
         position: 'absolute',

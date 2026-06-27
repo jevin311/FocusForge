@@ -30,10 +30,10 @@ const DEFAULT_CHECKIN_INTERVAL = 25 * 60 * 1000
 const DEFAULT_CHECKIN_WINDOW = 15 * 1000
 
 const getStorage = <T,>(key: string, fallback: T): T => {
-  if (typeof window === 'undefined') return fallback;
-  const saved = sessionStorage.getItem(`ff_${key}`);
-  try { return saved ? JSON.parse(saved) : fallback; }
-  catch { return fallback; }
+  if (typeof window === 'undefined') return fallback
+  const saved = sessionStorage.getItem(`ff_${key}`)
+  try { return saved ? JSON.parse(saved) : fallback }
+  catch { return fallback }
 }
 
 export function useSession({
@@ -50,11 +50,15 @@ export function useSession({
   useEffect(() => { sessionStorage.setItem('ff_elapsed', JSON.stringify(elapsedMs)) }, [elapsedMs])
   useEffect(() => { sessionStorage.setItem('ff_checkIns', JSON.stringify(checkIns)) }, [checkIns])
 
-
   const tickRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const checkInTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const checkInWindowRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const lastTickRef = useRef<number | null>(null)
+
+  // Tracks elapsed time within the current check-in interval so pause/resume
+  // doesn't reset the countdown to the next check-in from scratch
+  const checkInStartedAtRef = useRef<number | null>(null)
+  const checkInElapsedMsRef = useRef<number>(0)
 
   const {
     tabSwitchCount,
@@ -91,10 +95,16 @@ export function useSession({
   }, [status])
 
   // --- Check-in scheduling ---
-  const scheduleCheckIn = useCallback(() => {
+  const scheduleCheckIn = useCallback((remainingMs?: number) => {
     if (checkInTimerRef.current) clearTimeout(checkInTimerRef.current)
 
+    const delay = remainingMs ?? checkInIntervalMs
+    checkInStartedAtRef.current = Date.now()
+
     checkInTimerRef.current = setTimeout(() => {
+      checkInStartedAtRef.current = null
+      checkInElapsedMsRef.current = 0
+
       const checkIn: CheckIn = {
         triggeredAt: Date.now(),
         respondedAt: null,
@@ -104,21 +114,37 @@ export function useSession({
       triggerCheckInAlert()
 
       checkInWindowRef.current = setTimeout(() => {
+        let wasMissed = false
         setActiveCheckIn((current) => {
           if (!current || current.respondedAt !== null) return current
+          wasMissed = true
           const missedCheckIn: CheckIn = { ...current, missed: true }
           setCheckIns((prev) => [...prev, missedCheckIn])
           clearCheckInAlert()
           return null
         })
+        // Only schedule next check-in here if missed — responded path handles it in respondToCheckIn
+        if (wasMissed) {
+          setTimeout(() => {
+            checkInElapsedMsRef.current = 0
+            scheduleCheckIn()
+          }, 0)
+        }
       }, checkInResponseWindowMs)
-    }, checkInIntervalMs)
+    }, delay)
   }, [checkInIntervalMs, checkInResponseWindowMs, triggerCheckInAlert, clearCheckInAlert])
 
   useEffect(() => {
     if (status === 'active') {
-      scheduleCheckIn()
+      // Resume: subtract however much of the interval already elapsed before the pause
+      const remaining = checkInIntervalMs - checkInElapsedMsRef.current
+      scheduleCheckIn(remaining > 0 ? remaining : checkInIntervalMs)
     } else {
+      // Pause/end: save how much of the interval has elapsed so far
+      if (checkInStartedAtRef.current !== null) {
+        checkInElapsedMsRef.current += Date.now() - checkInStartedAtRef.current
+        checkInStartedAtRef.current = null
+      }
       if (checkInTimerRef.current) clearTimeout(checkInTimerRef.current)
       if (checkInWindowRef.current) clearTimeout(checkInWindowRef.current)
       clearCheckInAlert()
@@ -128,7 +154,7 @@ export function useSession({
       if (checkInTimerRef.current) clearTimeout(checkInTimerRef.current)
       if (checkInWindowRef.current) clearTimeout(checkInWindowRef.current)
     }
-  }, [status, scheduleCheckIn, clearCheckInAlert])
+  }, [status, scheduleCheckIn, clearCheckInAlert, checkInIntervalMs])
 
   // --- User responds to check-in ---
   const respondToCheckIn = useCallback(() => {
@@ -141,6 +167,8 @@ export function useSession({
     setCheckIns((prev) => [...prev, respondedCheckIn])
     setActiveCheckIn(null)
 
+    // Next interval starts fresh — reset accumulated elapsed time
+    checkInElapsedMsRef.current = 0
     scheduleCheckIn()
   }, [activeCheckIn, clearCheckInAlert, scheduleCheckIn])
 
@@ -159,7 +187,7 @@ export function useSession({
     unlockAudio()
     requestNotificationPermission()
     setStatus('active')
-  }, [status, resetIdleTracking, unlockAudio, requestNotificationPermission])
+  }, [resetIdleTracking, unlockAudio, requestNotificationPermission])
 
   const pause = useCallback(() => {
     if (status !== 'active') return
@@ -174,6 +202,8 @@ export function useSession({
   const end = useCallback((): SessionResult => {
     setStatus('ended')
     clearCheckInAlert()
+    checkInElapsedMsRef.current = 0
+    checkInStartedAtRef.current = null
 
     const missedCheckInCount = checkIns.filter((c) => c.missed).length
 
@@ -185,9 +215,9 @@ export function useSession({
       missedCheckInCount,
     }
 
-    sessionStorage.removeItem('ff_status')
-    sessionStorage.removeItem('ff_elapsed')
-    sessionStorage.removeItem('ff_checkIns')
+    // Don't remove sessionStorage here — handleResume needs elapsed/checkIns to restore.
+    // sessionStorage is only cleared when the user confirms Done in PostSessionCard.
+    sessionStorage.setItem('ff_status', JSON.stringify('paused'))
 
     return result
   }, [elapsedMs, totalIdleTime, tabSwitchCount, checkIns, clearCheckInAlert])
