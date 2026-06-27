@@ -9,10 +9,12 @@ export function useCheckInAlert() {
   const titleIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const notificationRef = useRef<Notification | null>(null)
 
-  // So that we will be able to play sounds, after the user does something i.e. "Start session"
+  // So that we will be able to play sounds, after the user does something i.e. "Start session", and to ensure that we resume if the context is suspended, else only have the first chime
   const unlockAudio = useCallback(() => {
-    if (audioCtxRef.current && audioCtxRef.current.state !== 'closed') {
-      if (audioCtxRef.current.state === 'suspended') {
+    if (audioCtxRef.current) {
+      if (audioCtxRef.current.state === 'closed') {
+        audioCtxRef.current = new AudioContext()
+      } else if (audioCtxRef.current.state === 'suspended') {
         audioCtxRef.current.resume()
       }
       return
@@ -112,9 +114,9 @@ export function useCheckInAlert() {
     return () => {
       stopFlashingTitle()
       closeNotification()
-      if (audioCtxRef.current && audioCtxRef.current.state !== 'closed') {
-        audioCtxRef.current.close()
-      }
+      // Don't close the AudioContext on unmount — closing it is permanent and
+      // means no sound will play if the component remounts (e.g. navigating pages)
+      // The context will be garbage collected naturally when no longer referenced
     }
   }, [stopFlashingTitle, closeNotification])
 
