@@ -48,6 +48,7 @@ export default function PostSessionCard({ result, onDone, onResume }: Props) {
 
     const payload = {
       mode: config.mode,
+      tabMode: config.tabMode,
       taskId: config.taskId ?? null,
       taskTitle: config.taskTitle ?? null,
       startedAt: startedAtDate.toISOString(),
