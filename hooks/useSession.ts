@@ -55,22 +55,14 @@ export function useSession({
   const checkInWindowRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const lastTickRef = useRef<number | null>(null)
 
-  // Tracks elapsed time within the current check-in interval so pause/resume
-  // doesn't reset the countdown to the next check-in from scratch
+  // Tracks elapsed time within the current check-in interval so pause/resume does not reset teimr
   const checkInStartedAtRef = useRef<number | null>(null)
   const checkInElapsedMsRef = useRef<number>(0)
-
-  // Tracks when the current check-in prompt fired so we can subtract the
-  // user's reaction time from the next interval (keeps intervals consistent)
   const checkInFiredAtRef = useRef<number | null>(null)
 
-  // Ref flag for missed check-in — avoids React StrictMode double-invoke issue
-  // where a local variable resets between the two runs of the state updater,
-  // causing scheduleCheckIn() to never be called after a miss
+  // Need this else after a miss, will not have any more checkins
   const didMissRef = useRef(false)
 
-  // Stable refs for values used inside scheduleCheckIn — avoids recreating the
-  // callback on every render which would reset the check-in timer via useEffect
   const checkInIntervalMsRef = useRef(checkInIntervalMs)
   const checkInResponseWindowMsRef = useRef(checkInResponseWindowMs)
   useEffect(() => { checkInIntervalMsRef.current = checkInIntervalMs }, [checkInIntervalMs])
@@ -89,13 +81,12 @@ export function useSession({
     clearCheckInAlert,
   } = useCheckInAlert()
 
-  // Stable refs so scheduleCheckIn doesn't need them as deps
   const triggerCheckInAlertRef = useRef(triggerCheckInAlert)
   const clearCheckInAlertRef = useRef(clearCheckInAlert)
   useEffect(() => { triggerCheckInAlertRef.current = triggerCheckInAlert }, [triggerCheckInAlert])
   useEffect(() => { clearCheckInAlertRef.current = clearCheckInAlert }, [clearCheckInAlert])
 
-  // --- Timer tick ---
+  // Timer tick
   useEffect(() => {
     if (status !== 'active') {
       lastTickRef.current = null
@@ -116,9 +107,9 @@ export function useSession({
     }
   }, [status])
 
-  // --- Check-in scheduling ---
+  // Check-in scheduling
   // scheduleCheckIn has no deps — uses refs for everything so it never recreates,
-  // which means the scheduling useEffect won't accidentally reset the timer
+  // so tht the scheduling useEffect won't accidentally reset the timer
   const scheduleCheckIn = useCallback((remainingMs?: number) => {
     if (checkInTimerRef.current) clearTimeout(checkInTimerRef.current)
 
@@ -158,7 +149,7 @@ export function useSession({
         })
       }, checkInResponseWindowMsRef.current)
     }, delay)
-  }, []) // intentionally empty — all values accessed via refs
+  }, [])
 
   useEffect(() => {
     if (status === 'active') {
@@ -167,7 +158,7 @@ export function useSession({
       const remaining = checkInIntervalMsRef.current - checkInElapsedMsRef.current
       scheduleCheckIn(remaining > 0 ? remaining : checkInIntervalMsRef.current)
     } else {
-      // Pause/end: save how much of the interval has elapsed so far
+      // Pause and end, save how much of the interval has elapsed so far
       if (checkInStartedAtRef.current !== null) {
         checkInElapsedMsRef.current += Date.now() - checkInStartedAtRef.current
         checkInStartedAtRef.current = null
@@ -181,9 +172,9 @@ export function useSession({
       if (checkInTimerRef.current) clearTimeout(checkInTimerRef.current)
       if (checkInWindowRef.current) clearTimeout(checkInWindowRef.current)
     }
-  }, [status, scheduleCheckIn]) // scheduleCheckIn is now stable so this only fires on status change
+  }, [status, scheduleCheckIn])
 
-  // --- User responds to check-in ---
+  // User responds to check-in
   const respondToCheckIn = useCallback(() => {
     if (!activeCheckIn) return
 
@@ -195,7 +186,7 @@ export function useSession({
     setActiveCheckIn(null)
 
     // Subtract how long the prompt was visible before the user clicked,
-    // so the next interval starts from when the check-in fired, not when they responded
+    // so the next interval starts from when the check-in fired, not when they respond
     const reactionTimeMs = checkInFiredAtRef.current
       ? Date.now() - checkInFiredAtRef.current
       : 0
@@ -204,12 +195,12 @@ export function useSession({
     scheduleCheckIn(Math.max(0, checkInIntervalMsRef.current - reactionTimeMs))
   }, [activeCheckIn, scheduleCheckIn])
 
-  // --- Controls ---
+  // Controls
   const start = useCallback(() => {
     const savedElapsed = getStorage('elapsed', 0)
     const savedStatus = getStorage<SessionStatus>('status', 'idle')
 
-    // Only reset data when genuinely starting fresh (not restoring a paused/active session)
+    // Only reset data when genuinely starting fresh (not when user resume a paused/active session)
     if (savedElapsed === 0 && savedStatus === 'idle') {
       setElapsedMs(0)
       setCheckIns([])
@@ -247,8 +238,8 @@ export function useSession({
       missedCheckInCount,
     }
 
-    // Don't remove sessionStorage here — handleResume needs elapsed/checkIns to restore.
-    // sessionStorage is only cleared when the user confirms Done in PostSessionCard.
+    // sessionStorage is only cleared when the user confirms Done in PostSessionCard, else our tiemr will reset when
+    // we use "back"
     sessionStorage.setItem('ff_status', JSON.stringify('paused'))
 
     return result

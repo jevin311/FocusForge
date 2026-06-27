@@ -6,7 +6,7 @@ import FloatingTimer from './FloatingTimer'
 export default function GlobalFloatingTimer() {
   const { isActive, config, pendingResult, endSession } = useSessionStore()
 
-  // On mount, if store says active but sessionStorage is empty, it's a stale reload — clear it
+  // On mount, if store says active but sessionStorage is empty, it's a stale reload and we need to clear it
   useEffect(() => {
     if (isActive && !sessionStorage.getItem('ff_status')) {
       endSession()

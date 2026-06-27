@@ -43,7 +43,8 @@ export const useSessionStore = create<SessionStore>()(
     }),
     {
       name: 'focusforge-session',
-      // Don't persist pendingResult since it should not survive a page refresh, else will have alot of errors and get stuck on tht page
+      // Don't persist pendingResult since it should not survive a page refresh, else will have alot of errors and get 
+      // stuck on tht page
       partialize: (state) => ({
         isActive: state.isActive,
         config: state.config,

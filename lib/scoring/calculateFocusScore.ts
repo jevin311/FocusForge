@@ -18,7 +18,7 @@ export interface FocusScoreInput {
   selfReportRating: number // We let them choose 1-5
   commitmentMet: boolean
   mode: StudyMode
-  tabMode: TabMode // Separate from mode — user's choice in launcher
+  tabMode: TabMode
 }
 
 export interface FocusScoreBreakdown {
@@ -39,7 +39,7 @@ interface ModeProfile {
   }
 }
 
-// Mode only affects score weights now — tab penalties are driven by tabMode
+// Mode only affects score weights now, then tab penalties are driven by tabMode
 export const MODE_SCORE_PROFILES: Record<StudyMode, ModeProfile> = {
   'deep-focus': {
     weights: { checkIn: 0.4, selfReport: 0.3, commitment: 0.3 },
@@ -52,7 +52,7 @@ export const MODE_SCORE_PROFILES: Record<StudyMode, ModeProfile> = {
   },
 }
 
-// Tab switch and idle penalties only apply when user chose single-tab
+// Tab switch and idle penalties only apply when user chose "single-tab'
 const TAB_SWITCH_PENALTY_PER_SWITCH = 5
 const MAX_TAB_SWITCH_PENALTY = 30
 const MAX_IDLE_PENALTY = 30
@@ -89,7 +89,7 @@ function calculateTabSwitchPenalty(tabSwitchCount: number, tabMode: TabMode): nu
 }
 
 function calculateIdlePenalty(idleTimeMs: number, durationMs: number, tabMode: TabMode): number {
-  // Multi-tab users may be reading notes in other tabs — no idle penalty
+  // Multi-tab users may be reading notes in other tabs so no idle penalty
   if (tabMode === 'multi-tab') return 0
   if (durationMs <= 0) return 0
 
