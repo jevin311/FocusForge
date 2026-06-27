@@ -32,7 +32,7 @@ export default function FloatingTimer() {
     unlockAudio,
   } = useSession({
     mode: config?.tabMode ?? 'single-tab',
-    checkInIntervalMs: 0.1 * 60 * 1000,
+    checkInIntervalMs: 0.5 * 60 * 1000,
     checkInResponseWindowMs: 15 * 1000,
   })
 
