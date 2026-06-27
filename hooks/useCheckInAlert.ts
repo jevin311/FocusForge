@@ -114,9 +114,6 @@ export function useCheckInAlert() {
     return () => {
       stopFlashingTitle()
       closeNotification()
-      // Don't close the AudioContext on unmount — closing it is permanent and
-      // means no sound will play if the component remounts (e.g. navigating pages)
-      // The context will be garbage collected naturally when no longer referenced
     }
   }, [stopFlashingTitle, closeNotification])
 

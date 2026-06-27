@@ -21,12 +21,12 @@ export function useIdleDetection(enabled: boolean): IdleDetectionResult {
     if (!enabled) return
 
     if (document.hidden) {
-      // User switched tab, start tracking idle time
+      // User switched tab so start tracking idle time
       hiddenAtRef.current = Date.now()
       setIsTabActive(false)
       setTabSwitchCount((prev) => prev + 1)
     } else {
-      // Tab became visible again, so add the additional idle duration
+      // User went back to the tab so add the additional idle duration
       if (hiddenAtRef.current !== null) {
         const idleDuration = Date.now() - hiddenAtRef.current
         setTotalIdleTime((prev) => prev + idleDuration)

@@ -48,7 +48,7 @@ export default function SessionLauncherModal({ task, onClose }: Props) {
   function handleStart() {
     if (!mode || !timerType || !tabMode || !commitment.trim()) return
 
-    // Unlock AudioContext from this user gesture so that our chime works later
+    // Unlock AudioContext from this user gesture so that our chime works later, else will have no sound
     unlockAudioFn?.()
 
     const config: SessionConfig = {
