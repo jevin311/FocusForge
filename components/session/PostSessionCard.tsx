@@ -134,11 +134,17 @@ export default function PostSessionCard({ result, onDone, onResume }: Props) {
         </div>
 
         {/* Stats row */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px', marginBottom: '24px' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '8px', marginBottom: '24px' }}>
           {[
             { label: 'Duration', value: formatDuration(result.durationMs) },
             { label: 'Check-ins', value: `${result.checkIns.length - result.missedCheckInCount}/${result.checkIns.length}` },
             { label: 'Tab switches', value: config.tabMode === 'single-tab' ? String(result.tabSwitchCount) : '—' },
+            {
+              label: 'Idle time',
+              value: config.tabMode === 'single-tab' && result.durationMs > 0
+                ? `${Math.round((result.idleTimeMs / result.durationMs) * 100)}%`
+                : '—'
+            },
           ].map(stat => (
             <div key={stat.label} style={{
               background: 'var(--bg-card)', border: '1px solid var(--border-subtle)',
