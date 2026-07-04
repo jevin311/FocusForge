@@ -36,24 +36,32 @@ export function useCheckInAlert() {
       return
     }
 
-    const play = () => {
+    // Play a single beep at a given time offset
+    const playBeep = (delay: number) => {
       const oscillator = ctx.createOscillator()
       const gain = ctx.createGain()
 
-      oscillator.type = 'sine'
-      oscillator.frequency.value = 880 // A5
+      oscillator.type = 'triangle'
+      oscillator.frequency.value = 1046 // C6
 
-      gain.gain.setValueAtTime(0.0001, ctx.currentTime)
+      gain.gain.setValueAtTime(0.0001, ctx.currentTime + delay)
 
-      // Sound increase nicely, not too sudden
-      gain.gain.exponentialRampToValueAtTime(0.3, ctx.currentTime + 0.05)
-      gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.6)
+      // Sound increases nicely, not too sudden
+      gain.gain.exponentialRampToValueAtTime(0.6, ctx.currentTime + delay + 0.05)
+      gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + delay + 0.3)
 
       oscillator.connect(gain)
       gain.connect(ctx.destination)
 
-      oscillator.start()
-      oscillator.stop(ctx.currentTime + 0.6)
+      oscillator.start(ctx.currentTime + delay)
+      oscillator.stop(ctx.currentTime + delay + 0.3)
+    }
+
+    // Play 3 beeps in sequence so the alert cuts through background music
+    const play = () => {
+      playBeep(0)
+      playBeep(0.4)
+      playBeep(0.8)
     }
 
     // Need this cos browsers suspend the AudioContext when the tab goes to the background, need to resume first
