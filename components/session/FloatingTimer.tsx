@@ -4,6 +4,7 @@ import { useSessionStore } from '@/lib/session-store'
 import { useSession } from '@/hooks/useSession'
 import { useRouter } from 'next/navigation'
 import FlameIndicator from './FlameIndicator'
+import SoundscapePanel from './SoundscapePanel'
 
 function formatTime(totalSeconds: number): string {
   const h = Math.floor(totalSeconds / 3600)
@@ -248,6 +249,8 @@ export default function FloatingTimer() {
       >
         End Session
       </button>
+
+      <SoundscapePanel status={status} />
     </div>
   )
 }
