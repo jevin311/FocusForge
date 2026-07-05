@@ -24,6 +24,7 @@ interface UseSessionOptions {
   mode: string
   checkInIntervalMs?: number
   checkInResponseWindowMs?: number
+  checkInsEnabled?: boolean
 }
 
 const DEFAULT_CHECKIN_INTERVAL = 25 * 60 * 1000
@@ -40,6 +41,7 @@ export function useSession({
   mode,
   checkInIntervalMs = DEFAULT_CHECKIN_INTERVAL,
   checkInResponseWindowMs = DEFAULT_CHECKIN_WINDOW,
+  checkInsEnabled = true,
 }: UseSessionOptions) {
   const [status, setStatus] = useState<SessionStatus>(() => getStorage('status', 'idle'))
   const [elapsedMs, setElapsedMs] = useState<number>(() => getStorage('elapsed', 0))
@@ -152,6 +154,15 @@ export function useSession({
   }, [])
 
   useEffect(() => {
+    // Timed-practice sessions skip check-ins entirely
+    if (!checkInsEnabled) {
+      if (checkInTimerRef.current) clearTimeout(checkInTimerRef.current)
+      if (checkInWindowRef.current) clearTimeout(checkInWindowRef.current)
+      clearCheckInAlertRef.current()
+      setActiveCheckIn(null)
+      return
+    }
+
     if (status === 'active') {
       // Resume: subtract however much of the interval already elapsed before the pause,
       // so that the timing is not off due to the users' reaction timing
@@ -172,7 +183,7 @@ export function useSession({
       if (checkInTimerRef.current) clearTimeout(checkInTimerRef.current)
       if (checkInWindowRef.current) clearTimeout(checkInWindowRef.current)
     }
-  }, [status, scheduleCheckIn])
+  }, [status, scheduleCheckIn, checkInsEnabled])
 
   // User responds to check-in
   const respondToCheckIn = useCallback(() => {
