@@ -34,6 +34,7 @@ export default function FloatingTimer() {
     mode: config?.tabMode ?? 'single-tab',
     checkInIntervalMs: 0.5 * 60 * 1000,
     checkInResponseWindowMs: 15 * 1000,
+    checkInsEnabled: !(config?.mode === 'practice' && config?.timerType === 'timed'),
   })
 
   const hasStarted = useRef(false)
