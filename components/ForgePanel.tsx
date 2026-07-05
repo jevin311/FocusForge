@@ -203,7 +203,7 @@ export default function ForgePanel() {
           { val: loading ? '--' : formattedTime, label: 'This week', orange: false },
           { val: loading ? '--' : `${streak} 🔥`, label: 'Streak', orange: true },
           { val: loading ? '--' : `${avgFocusScore}%`, label: 'Avg focus', orange: false },
-          { val: loading ? '--' : String(sessionCount), label: 'Sessions', orange: false },
+          { val: loading ? '--' : String(sessionCount), label: 'Weekly Sessions', orange: false },
         ].map(stat => (
           <div key={stat.label} style={{
             background: 'var(--bg-card)', border: '1px solid var(--border-subtle)',

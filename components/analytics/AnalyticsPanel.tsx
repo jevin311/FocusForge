@@ -68,6 +68,13 @@ const MODE_LABEL: Record<string, string> = {
   'research': 'Research',
   'practice': 'Practice',
 }
+
+function formatMins(mins: number): string {
+  const h = Math.floor(mins / 60)
+  const m = mins % 60
+  if (h > 0) return `${h}h ${m}m`
+  return `${m}m`
+}
  
 function StatCard({ label, value, sub }: { label: string; value: string; sub?: string }) {
   return (
@@ -75,16 +82,16 @@ function StatCard({ label, value, sub }: { label: string; value: string; sub?: s
       background: 'var(--bg-card)',
       border: '1px solid var(--border-subtle)',
       borderRadius: '12px',
-      padding: '14px 16px',
+      padding: '12px 14px',
     }}>
-      <div style={{ fontSize: '10px', color: 'var(--text-faint)', textTransform: 'uppercase', letterSpacing: '.07em', marginBottom: '6px' }}>
+      <div style={{ fontSize: '9px', color: 'var(--text-faint)', textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: '5px' }}>
         {label}
       </div>
-      <div style={{ fontSize: '22px', fontWeight: 700, color: '#fff', letterSpacing: '-0.5px' }}>
+      <div style={{ fontSize: '18px', fontWeight: 700, color: '#fff', letterSpacing: '-0.3px' }}>
         {value}
       </div>
       {sub && (
-        <div style={{ fontSize: '10px', color: 'var(--text-faint)', marginTop: '3px' }}>{sub}</div>
+        <div style={{ fontSize: '9px', color: 'var(--text-faint)', marginTop: '3px' }}>{sub}</div>
       )}
     </div>
   )
@@ -147,9 +154,11 @@ export default function AnalyticsPanel() {
       })
       .catch(() => setLoading(false))
   }, [])
+
+  const avgSessionMins = stats && stats.totalSessions > 0
+    ? Math.round(stats.totalMins / stats.totalSessions)
+    : 0
  
-  const totalHours = Math.floor((stats?.totalMins ?? 0) / 60)
-  const totalMinsRem = (stats?.totalMins ?? 0) % 60
   const weekHours = Math.floor((stats?.weekMins ?? 0) / 60)
   const weekMinsRem = (stats?.weekMins ?? 0) % 60
  
@@ -158,12 +167,12 @@ export default function AnalyticsPanel() {
     : null
  
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
  
       {/* Section label */}
       <div style={{
         fontSize: '10px', fontWeight: 600, color: 'var(--text-faint)',
-        textTransform: 'uppercase', letterSpacing: '.1em', marginBottom: '4px',
+        textTransform: 'uppercase', letterSpacing: '.1em', marginBottom: '2px',
       }}>
         All Time
       </div>
@@ -181,45 +190,56 @@ export default function AnalyticsPanel() {
         </div>
       ) : (
         <>
-          <StatCard
-            label="Total focus time"
-            value={totalHours > 0 ? `${totalHours}h ${totalMinsRem}m` : `${totalMinsRem}m`}
-            sub={`${stats.totalSessions} session${stats.totalSessions !== 1 ? 's' : ''} · ${stats.daysStudied} day${stats.daysStudied !== 1 ? 's' : ''}`}
-          />
- 
-          <StatCard
-            label="This week"
-            value={weekHours > 0 ? `${weekHours}h ${weekMinsRem}m` : `${weekMinsRem}m`}
-          />
- 
-          <StatCard
-            label="Current streak"
-            value={stats.streak > 0 ? `${stats.streak} day${stats.streak !== 1 ? 's' : ''} 🔥` : 'None yet'}
-          />
- 
-          <StatCard
-            label="Avg focus score"
-            value={`${stats.avgFocusScore}`}
-            sub="out of 100"
-          />
- 
-          <StatCard
-            label="Goal completion"
-            value={`${stats.commitmentRate}%`}
-            sub="sessions where commitment was met"
-          />
- 
-          {bestDayFormatted && (
+          <div style={{
+            background: 'radial-gradient(ellipse at center, rgba(249,115,22,0.08) 0%, var(--bg-card) 70%)',
+            border: '1px solid rgba(249,115,22,0.2)',
+            borderRadius: '14px', padding: '20px', textAlign: 'center',
+          }}>
+            <div style={{
+              fontSize: '38px', fontWeight: 800, color: '#fff', letterSpacing: '-1.5px',
+              textShadow: '0 0 24px rgba(220,100,20,0.35)',
+            }}>
+              {stats.avgFocusScore}
+            </div>
+            <div style={{ fontSize: '9px', color: 'var(--text-faint)', textTransform: 'uppercase', letterSpacing: '.08em', marginTop: '4px' }}>
+              Lifetime avg focus score
+            </div>
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
             <StatCard
-              label="Best day"
-              value={bestDayFormatted}
-              sub={`${stats.bestDayMins}m of focus`}
+              label="Avg. session"
+              value={formatMins(avgSessionMins)}
+              sub={`${stats.totalSessions} total`}
             />
-          )}
+            <StatCard
+              label="This week"
+              value={weekHours > 0 ? `${weekHours}h ${weekMinsRem}m` : `${weekMinsRem}m`}
+            />
+            <StatCard
+              label="Streak"
+              value={stats.streak > 0 ? `${stats.streak}d 🔥` : 'None yet'}
+            />
+            <StatCard
+              label="Goal completion"
+              value={`${stats.commitmentRate}%`}
+            />
+            {bestDayFormatted && (
+              <StatCard
+                label="Best day"
+                value={bestDayFormatted}
+                sub={`${stats.bestDayMins}m focus`}
+              />
+            )}
+            <StatCard
+              label="Days active"
+              value={String(stats.daysStudied)}
+            />
+          </div>
  
           {/* Mode breakdown */}
           {Object.keys(stats.modeBreakdown).length > 0 && (
-            <div style={{ marginTop: '8px' }}>
+            <div style={{ marginTop: '4px' }}>
               <div style={{
                 fontSize: '10px', fontWeight: 600, color: 'var(--text-faint)',
                 textTransform: 'uppercase', letterSpacing: '.1em', marginBottom: '10px',

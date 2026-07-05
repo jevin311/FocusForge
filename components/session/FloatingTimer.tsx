@@ -4,7 +4,6 @@ import { useSessionStore } from '@/lib/session-store'
 import { useSession } from '@/hooks/useSession'
 import { useRouter } from 'next/navigation'
 import FlameIndicator from './FlameIndicator'
-import SoundscapePanel from './SoundscapePanel'
 
 function formatTime(totalSeconds: number): string {
   const h = Math.floor(totalSeconds / 3600)
@@ -71,28 +70,35 @@ export default function FloatingTimer() {
     return () => document.removeEventListener('visibilitychange', handleVisibility)
   }, [])
 
-  // Tab title timer — skip update while check-in alert is flashing so the two don't fight
-  useEffect(() => {
-    if (activeCheckIn) return // let useCheckInAlert own the title during a check-in
-    if (status === 'active') {
-      const elapsedSeconds = Math.floor(elapsedMs / 1000)
-      document.title = `⏱ ${formatTime(elapsedSeconds)} — FocusForge`
-    } else if (status === 'paused') {
-      document.title = '⏸ Paused — FocusForge'
-    }
-    return () => { document.title = 'FocusForge' }
-  }, [elapsedMs, status, activeCheckIn])
-
-  if (!config) return null
-
   const elapsedSeconds = Math.floor(elapsedMs / 1000)
-  const totalSeconds = config.timerType === 'timed' && config.durationMins
+  const totalSeconds = config?.timerType === 'timed' && config.durationMins
     ? config.durationMins * 60
     : null
   const displaySeconds = totalSeconds !== null
     ? Math.max(0, totalSeconds - elapsedSeconds)
     : elapsedSeconds
   const isCountdownFinished = totalSeconds !== null && displaySeconds === 0
+
+  // Tab title timer — skip update while check-in alert is flashing so the two don't fight
+  // counts DOWN for timed sessions, counts UP for open/stopwatch sessions
+  useEffect(() => {
+    if (activeCheckIn) return // let useCheckInAlert own the title during a check-in
+    if (status === 'active') {
+      if (totalSeconds !== null) {
+        document.title = isCountdownFinished
+          ? `✅ Time's up! — FocusForge`
+          : `⏳ ${formatTime(displaySeconds)} — FocusForge`
+      } else {
+        document.title = `⏱ ${formatTime(displaySeconds)} — FocusForge`
+      }
+    } else if (status === 'paused') {
+      document.title = '⏸ Paused — FocusForge'
+    }
+    return () => { document.title = 'FocusForge' }
+  }, [displaySeconds, status, activeCheckIn, totalSeconds, isCountdownFinished])
+
+  if (!config) return null
+
   const progress = totalSeconds ? Math.min(elapsedSeconds / totalSeconds, 1) : null
 
   function handleEndSession() {
@@ -250,7 +256,18 @@ export default function FloatingTimer() {
         End Session
       </button>
 
-      <SoundscapePanel status={status} />
+      {/* Soundscape player shortcut */}
+      <button
+        onClick={() => router.push('/lofi')}
+        style={{
+          width: '100%', padding: '8px', marginTop: '8px',
+          background: 'transparent', border: 'none',
+          color: 'var(--text-faint)', fontSize: '11px',
+          cursor: 'pointer', textAlign: 'center',
+        }}
+      >
+        🎵 Ambient sounds
+      </button>
     </div>
   )
 }
