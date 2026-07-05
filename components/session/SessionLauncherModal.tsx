@@ -34,6 +34,7 @@ const MODES: { value: SessionMode; colour: string; bg: string; border: string; d
 ]
 
 const DURATIONS = [25, 45, 90]
+const MAX_CUSTOM_MINUTES = 480 // 8 hours, generous ceiling against fat-finger input
 
 export default function SessionLauncherModal({ task, onClose }: Props) {
   const [step, setStep] = useState(1)
@@ -43,7 +44,19 @@ export default function SessionLauncherModal({ task, onClose }: Props) {
   const [tabMode, setTabMode] = useState<TabMode | null>(null)
   const [commitment, setCommitment] = useState('')
 
+  const [showCustom, setShowCustom] = useState(false)
+  const [customMinutes, setCustomMinutes] = useState('')
+
   const { startSession, unlockAudioFn } = useSessionStore()
+
+  function confirmCustomDuration() {
+    const mins = parseInt(customMinutes, 10)
+    if (mins > 0 && mins <= MAX_CUSTOM_MINUTES) {
+      setTimerType('timed')
+      setDurationMins(mins)
+      setStep(3)
+    }
+  }
 
   function handleStart() {
     if (!mode || !timerType || !tabMode || !commitment.trim()) return
@@ -65,6 +78,8 @@ export default function SessionLauncherModal({ task, onClose }: Props) {
     startSession(config)
     onClose()
   }
+
+  const isCustomActive = durationMins !== null && !DURATIONS.includes(durationMins)
 
   return (
     // Backdrop
@@ -147,7 +162,7 @@ export default function SessionLauncherModal({ task, onClose }: Props) {
             </p>
             {/* Stopwatch option */}
             <div
-              onClick={() => { setTimerType('stopwatch'); setDurationMins(null); setStep(3) }}
+              onClick={() => { setTimerType('stopwatch'); setDurationMins(null); setShowCustom(false); setStep(3) }}
               style={{
                 padding: '14px 16px', borderRadius: '12px', cursor: 'pointer',
                 border: `1px solid ${timerType === 'stopwatch' ? 'rgba(249,115,22,0.4)' : 'var(--border-subtle)'}`,
@@ -183,7 +198,53 @@ export default function SessionLauncherModal({ task, onClose }: Props) {
                     {d} min
                   </button>
                 ))}
+              <button
+                  onClick={(e) => { e.stopPropagation(); setTimerType('timed'); setShowCustom(v => !v) }}
+                  style={{
+                    flex: 1, padding: '8px', borderRadius: '8px', cursor: 'pointer',
+                    background: showCustom || isCustomActive ? '#f97316' : 'rgba(255,255,255,0.06)',
+                    border: showCustom || isCustomActive ? 'none' : '1px solid var(--border-subtle)',
+                    color: showCustom || isCustomActive ? '#fff' : 'var(--text-muted)',
+                    fontSize: '12px', fontWeight: 600,
+                  }}
+                >
+                  Custom
+                </button>
               </div>
+
+              {showCustom && (
+                <div onClick={e => e.stopPropagation()} style={{ display: 'flex', gap: '8px', marginTop: '8px' }}>
+                  <input
+                    autoFocus
+                    type="number"
+                    min={1}
+                    max={MAX_CUSTOM_MINUTES}
+                    value={customMinutes}
+                    onChange={e => setCustomMinutes(e.target.value)}
+                    onKeyDown={e => e.key === 'Enter' && confirmCustomDuration()}
+                    placeholder="Minutes"
+                    style={{
+                      flex: 1, background: 'var(--bg-surface)',
+                      border: '1px solid rgba(249,115,22,0.3)',
+                      borderRadius: '8px', padding: '8px 10px',
+                      color: '#e8eaf0', fontSize: '12px', outline: 'none', fontFamily: 'inherit',
+                    }}
+                  />
+                  <button
+                    onClick={confirmCustomDuration}
+                    disabled={!customMinutes || parseInt(customMinutes, 10) <= 0}
+                    style={{
+                      padding: '8px 16px', borderRadius: '8px', border: 'none',
+                      background: customMinutes && parseInt(customMinutes, 10) > 0 ? '#f97316' : 'rgba(255,255,255,0.06)',
+                      color: customMinutes && parseInt(customMinutes, 10) > 0 ? '#fff' : 'var(--text-faint)',
+                      fontSize: '12px', fontWeight: 600,
+                      cursor: customMinutes && parseInt(customMinutes, 10) > 0 ? 'pointer' : 'not-allowed',
+                    }}
+                  >
+                    Set
+                  </button>
+                </div>
+              )}
             </div>
           </div>
         )}

@@ -15,7 +15,7 @@ function StreakHeatmap() {
   const [grid, setGrid] = useState<HeatDay[]>([])
 
   useEffect(() => {
-    fetch('/api/sessions/heatmap')
+    fetch('/api/heatmap')
       .then(r => r.json())
       .then(data => { if (data?.grid) setGrid(data.grid) })
       .catch(() => { })
@@ -42,17 +42,20 @@ function StreakHeatmap() {
   return (
     <div style={{
       background: 'var(--bg-card)', border: '1px solid var(--border-subtle)',
-      borderRadius: '14px', padding: '16px 20px',
+      borderRadius: '14px', padding: '18px 20px',
     }}>
       <div style={{
         fontSize: '10px', fontWeight: 600, color: 'var(--text-faint)',
-        textTransform: 'uppercase', letterSpacing: '.1em', marginBottom: '10px',
+        textTransform: 'uppercase', letterSpacing: '.1em', marginBottom: '4px',
       }}>
-        12-week activity
+        Last 12 weeks
       </div>
-      <div style={{ display: 'flex', gap: '3px' }}>
+      <div style={{ fontSize: '10px', color: 'var(--text-faint)', marginBottom: '12px', lineHeight: 1.5 }}>
+        Every day at a glance — open a month on the right for full detail.
+      </div>
+      <div style={{ display: 'flex', gap: '4px' }}>
         {weeks.map((week, wi) => (
-          <div key={wi} style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
+          <div key={wi} style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
             {week.map((day) => (
               <div
                 key={day.date}
@@ -60,11 +63,10 @@ function StreakHeatmap() {
                   ? `${day.date}: ${day.sessionCount} session${day.sessionCount !== 1 ? 's' : ''} · ${day.avgFocusScore}° avg`
                   : day.date}
                 style={{
-                  width: '12px', height: '12px', borderRadius: '3px',
+                  width: '13px', height: '13px', borderRadius: '4px',
                   background: cellColour(day.avgFocusScore),
                   border: day.date === todayStr ? '1px solid rgba(249,115,22,0.8)' : '1px solid transparent',
                   transition: 'background 0.2s',
-                  cursor: day.sessionCount > 0 ? 'default' : 'default',
                 }}
               />
             ))}
@@ -135,9 +137,9 @@ function AnalyticsContent() {
         {/* Panel heading */}
         <div style={{
           fontSize: '16px', fontWeight: 700, color: '#fff',
-          marginBottom: '4px',
+          marginBottom: '4px', display: 'flex', alignItems: 'center', gap: '8px',
         }}>
-          Your Stats
+          🔥 Your Stats
         </div>
 
         {/* 12-week heatmap strip */}
@@ -160,8 +162,9 @@ function AnalyticsContent() {
         {/* Calendar heading */}
         <div style={{
           fontSize: '16px', fontWeight: 700, color: '#fff', marginBottom: '20px',
+          display: 'flex', alignItems: 'center', gap: '8px',
         }}>
-          Session History
+          📖 Session History
         </div>
 
         <AnalyticsCalendar

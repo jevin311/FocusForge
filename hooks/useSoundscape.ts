@@ -13,10 +13,16 @@ export const SOUNDSCAPE_OPTIONS = [
 
 export type SoundscapeId = typeof SOUNDSCAPE_OPTIONS[number]['id']
 
-type SessionStatus = 'idle' | 'active' | 'paused' | 'ended'
+export function useSoundscape() {
+  const {
+      soundscapeId,
+      soundscapeVolume,
+      soundscapePlaying,
+      setSoundscape,
+      setSoundscapeVolume,
+      setSoundscapePlaying,
+    } = useSessionStore()  
 
-export function useSoundscape(status: SessionStatus) {
-  const { soundscapeId, soundscapeVolume, setSoundscape, setSoundscapeVolume } = useSessionStore()
   const audioRef = useRef<HTMLAudioElement | null>(null)
   // Track the last sound we loaded so we don't recreate the Audio object unnecessarily
   const loadedIdRef = useRef<string | null>(null)
@@ -50,11 +56,8 @@ export function useSoundscape(status: SessionStatus) {
     audioRef.current = audio
     loadedIdRef.current = soundscapeId
 
-    // Only play if session is currently active
-    if (status === 'active') {
-      audio.play().catch(() => {
-        // Autoplay blocked as user must interact first
-      })
+    if (soundscapePlaying) {
+      audio.play().catch(() => setSoundscapePlaying(false))
     }
   }, [soundscapeId]) // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -63,18 +66,12 @@ export function useSoundscape(status: SessionStatus) {
     const audio = audioRef.current
     if (!audio || !soundscapeId) return
 
-    if (status === 'active') {
-      // Resume playback when session resumes
-      audio.play().catch(() => { })
-    } else if (status === 'paused') {
-      // Pause audio with the session
+    if (soundscapePlaying) {
+      audio.play().catch(() => setSoundscapePlaying(false))
+    } else {
       audio.pause()
-    } else if (status === 'ended' || status === 'idle') {
-      // Stop completely and reset
-      audio.pause()
-      audio.currentTime = 0
     }
-  }, [status, soundscapeId])
+  }, [soundscapePlaying, soundscapeId]) // eslint-disable-next-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (audioRef.current) {
@@ -94,13 +91,20 @@ export function useSoundscape(status: SessionStatus) {
   }, [])
 
   const selectSound = useCallback((id: SoundscapeId) => {
-    // clicking the active sound will turn it off
-    if (id === soundscapeId) {
-      setSoundscape(null)
-    } else {
-      setSoundscape(id)
-    }
-  }, [soundscapeId, setSoundscape])
+    if (id === soundscapeId) return // already selected — use play/pause instead
+    setSoundscape(id)
+    setSoundscapePlaying(true)
+  }, [soundscapeId, setSoundscape, setSoundscapePlaying])
+
+  const togglePlay = useCallback(() => {
+    if (!soundscapeId) return
+    setSoundscapePlaying(!soundscapePlaying)
+  }, [soundscapeId, soundscapePlaying, setSoundscapePlaying])
+
+  const stop = useCallback(() => {
+    setSoundscapePlaying(false)
+    setSoundscape(null)
+  }, [setSoundscape, setSoundscapePlaying])
 
   const changeVolume = useCallback((volume: number) => {
     setSoundscapeVolume(volume)
@@ -108,8 +112,11 @@ export function useSoundscape(status: SessionStatus) {
 
   return {
     currentSound: soundscapeId,
+    isPlaying: soundscapePlaying,
     volume: soundscapeVolume,
     selectSound,
+    togglePlay,
+    stop,
     changeVolume,
   }
 }

@@ -16,6 +16,7 @@ interface SessionStore {
   // Soundscape preferences persisted so they survive page refresh and carry across sessions
   soundscapeId: SoundscapeId | null
   soundscapeVolume: number  // we default 0.6
+  soundscapePlaying: boolean
 
   startSession: (config: SessionConfig) => void
   endSession: () => void
@@ -23,6 +24,7 @@ interface SessionStore {
   setUnlockAudioFn: (fn: () => void) => void
   setSoundscape: (id: SoundscapeId | null) => void
   setSoundscapeVolume: (volume: number) => void
+  setSoundscapePlaying: (playing: boolean) => void
 }
 
 export const useSessionStore = create<SessionStore>()(
@@ -35,6 +37,7 @@ export const useSessionStore = create<SessionStore>()(
       unlockAudioFn: null,
       soundscapeId: null,
       soundscapeVolume: 0.6,
+      soundscapePlaying: false,
 
       startSession: (config) => set({
         isActive: true,
@@ -54,6 +57,7 @@ export const useSessionStore = create<SessionStore>()(
       setUnlockAudioFn: (fn) => set({ unlockAudioFn: fn }),
       setSoundscape: (id) => set({ soundscapeId: id }),
       setSoundscapeVolume: (volume) => set({ soundscapeVolume: volume }),
+      setSoundscapePlaying: (playing) => set({ soundscapePlaying: playing }),
     }),
     {
       name: 'focusforge-session',
