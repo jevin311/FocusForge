@@ -44,5 +44,10 @@
     "tailwindcss": "^4",
     "typescript": "^5",
     "vitest": "^4.1.9"
+  },
+  "optionalDependencies": {
+    "@rolldown/binding-linux-x64-gnu": "1.1.5",
+    "@rolldown/binding-darwin-arm64": "1.1.5",
+    "@rolldown/binding-linux-arm64-gnu": "1.1.5"
   }
 }
