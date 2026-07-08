@@ -24,10 +24,17 @@ jobs:
           node-version: 20
           cache: npm # caches ~/.npm between runs so npm ci is faster
 
-      # Installs exactly what's in package-lock.json (faster and more
-      # reproducible than `npm install` in CI).
+      # `npm ci` installs exactly what's frozen in package-lock.json, with no
+      # re-resolution - but that includes platform-specific optional native
+      # binaries (e.g. vitest's rolldown dependency), and whichever machine
+      # last regenerated the lock file only reliably records ITS OWN
+      # platform's binding. `npm install` still uses the lock file for
+      # versions, but re-resolves those optional platform-specific packages
+      # for whatever machine it's actually running on - which is what this
+      # runner (Linux x64) needs regardless of what platform the lock file
+      # was last touched on.
       - name: Install dependencies
-        run: npm ci
+        run: npm install
 
       # Runs the same Vitest suite as `npm run test:run` locally.
       # No database secrets needed here - these tests mock the Supabase
@@ -54,8 +61,10 @@ jobs:
           node-version: 20
           cache: npm
 
+      # Same reasoning as the test job above - npm install re-resolves
+      # platform-specific optional native binaries correctly for this runner.
       - name: Install dependencies
-        run: npm ci
+        run: npm install
 
       - name: Install Playwright browsers
         run: npx playwright install --with-deps chromium
