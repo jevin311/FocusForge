@@ -1,0 +1,83 @@
+name: CI
+
+# Run automatically on every push and on every pull request, so tests are
+# checked before code lands on main - not just whenever someone remembers to
+# run them locally.
+on:
+  push:
+  pull_request:
+
+jobs:
+  test:
+    name: Run test suite
+    runs-on: ubuntu-latest
+
+    steps:
+      # Check out the repo at the commit that triggered this run.
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # Install Node so we can run npm/vitest.
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm # caches ~/.npm between runs so npm ci is faster
+
+      # Installs exactly what's in package-lock.json (faster and more
+      # reproducible than `npm install` in CI).
+      - name: Install dependencies
+        run: npm ci
+
+      # Runs the same Vitest suite as `npm run test:run` locally.
+      # No database secrets needed here - these tests mock the Supabase
+      # client, so they don't touch a real database.
+      - name: Run tests
+        run: npm run test:run
+
+  # "Integration Test" in the report-writeup sense: drives the real app in a
+  # real browser (launcher -> timer -> check-in -> summary -> dashboard)
+  # against your real Supabase project - nothing here is mocked. Uses the
+  # same project as production, but logs in as a dedicated test account so
+  # its data stays isolated from real users (enforced by your RLS policies).
+  e2e:
+    name: Run Playwright integration test
+    runs-on: ubuntu-latest
+    needs: test
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps chromium
+
+      - name: Run Playwright integration test
+        run: npm run test:e2e
+        env:
+          # Same real Supabase project used in production - same values as
+          # NEXT_PUBLIC_SUPABASE_URL / NEXT_PUBLIC_SUPABASE_ANON_KEY in your
+          # .env.local, just added as GitHub secrets so CI can use them too.
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+          # A dedicated test account's credentials within that same project -
+          # not a real user's. Its rows stay isolated from everyone else's
+          # via your existing RLS policies.
+          E2E_TEST_EMAIL: ${{ secrets.E2E_TEST_EMAIL }}
+          E2E_TEST_PASSWORD: ${{ secrets.E2E_TEST_PASSWORD }}
+
+      - name: Upload Playwright report on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: playwright-report/
+          retention-days: 7

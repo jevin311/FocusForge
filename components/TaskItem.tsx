@@ -65,7 +65,9 @@ export default function TaskItem({ task, onToggle, onDelete, onEdit, onLaunch, o
   }
 
   return (
-    <div style={{
+    <div
+      data-testid={`task-item-${task.title}`}
+      style={{
       display: 'flex',
       alignItems: 'center',
       gap: '12px',
@@ -191,6 +193,7 @@ export default function TaskItem({ task, onToggle, onDelete, onEdit, onLaunch, o
 
       {/* Play button */}
      <button
+        data-testid="launch-session-button"
         onClick={() => !task.completed && !isSessionActive && onLaunch(task)}
         disabled={task.completed || isSessionActive}
         title={isSessionActive ? 'End current session first' : ''}

@@ -32,8 +32,10 @@ export default function FloatingTimer() {
     unlockAudio,
   } = useSession({
     mode: config?.tabMode ?? 'single-tab',
-    checkInIntervalMs: 0.5 * 60 * 1000,
-    checkInResponseWindowMs: 15 * 1000,
+    // Set only for e2e runs (playwright.config.ts webServer.env). Unset for
+    // real users, so useSession.ts's real 25min/15s defaults apply.
+    checkInIntervalMs: Number(process.env.NEXT_PUBLIC_CHECKIN_INTERVAL_MS) || undefined,
+    checkInResponseWindowMs: Number(process.env.NEXT_PUBLIC_CHECKIN_RESPONSE_WINDOW_MS) || undefined,
     checkInsEnabled: !(config?.mode === 'practice' && config?.timerType === 'timed'),
   })
 
@@ -170,10 +172,13 @@ export default function FloatingTimer() {
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '16px', marginBottom: '16px' }}>
         <FlameIndicator dimmed={!isTabVisible} />
         <div style={{ textAlign: 'center' }}>
-          <div style={{
-            fontSize: '42px', fontWeight: 800, color: isCountdownFinished ? '#f97316' : '#fff',
-            fontVariantNumeric: 'tabular-nums', letterSpacing: '-2px',
-          }}>
+          <div
+            data-testid="timer-display"
+            style={{
+              fontSize: '42px', fontWeight: 800, color: isCountdownFinished ? '#f97316' : '#fff',
+              fontVariantNumeric: 'tabular-nums', letterSpacing: '-2px',
+            }}
+          >
             {formatTime(displaySeconds)}
           </div>
           <p style={{ fontSize: '10px', color: 'var(--text-faint)', margin: '4px 0 0' }}>
