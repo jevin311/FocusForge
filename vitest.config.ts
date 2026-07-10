@@ -8,6 +8,11 @@ export default defineConfig({
     environment: 'jsdom',
     globals: true,
     setupFiles: ['./vitest.setup.ts'],
+    // Vitest's default include pattern also matches *.spec.ts anywhere in
+    // the repo, which picks up the Playwright tests in e2e/ (a different
+    // runner, imports @playwright/test, not installed for Vitest). Exclude
+    // that folder so the two test runners stay separate.
+    exclude: ['node_modules/**', 'e2e/**'],
   },
   resolve: {
     alias: {

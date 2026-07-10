@@ -133,7 +133,6 @@ export function useSession({
       triggerCheckInAlertRef.current()
 
       checkInWindowRef.current = setTimeout(() => {
-        console.log('[checkin] window expired, checking if missed...')
         setActiveCheckIn((current) => {
           if (!current || current.respondedAt !== null) return current
           const missedCheckIn: CheckIn = { ...current, missed: true }
