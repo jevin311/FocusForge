@@ -4,6 +4,7 @@ import Sidebar from '@/components/Sidebar'
 import AnalyticsPanel from '@/components/analytics/AnalyticsPanel'
 import AnalyticsCalendar from '@/components/analytics/AnalyticsCalendar'
 import { createClient } from '@/lib/supabase/client'
+import AnalyticsCharts from '@/components/analytics/AnalyticsCharts'
 
 interface HeatDay {
   date: string
@@ -171,6 +172,16 @@ function AnalyticsContent() {
           selectedDate={selectedDate}
           onSelectDate={setSelectedDate}
         />
+
+        <div style={{ marginTop: '40px' }}>
+          <div style={{
+            fontSize: '16px', fontWeight: 700, color: '#fff', marginBottom: '20px',
+            display: 'flex', alignItems: 'center', gap: '8px',
+          }}>
+            📈 Trends
+          </div>
+          <AnalyticsCharts />
+        </div>
       </div>
 
     </div>

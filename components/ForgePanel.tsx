@@ -1,6 +1,8 @@
 'use client'
-import { useEffect, useState } from 'react'
-// This is our left side design, remember to update the heat ratings etc i just use random values first
+import { useEffect, useState, useCallback } from 'react'
+import { useSessionStore } from '@/lib/session-store'
+import { getForgeTier } from '@/lib/forgeTier'
+// This is our left side design
 
 interface HeatmapDay {
   date: string
@@ -28,93 +30,81 @@ export default function ForgePanel() {
   })
   const [loading, setLoading] = useState(true)
 
-  useEffect(() => {
-    async function fetchStats() {
-      try {
-        const res = await fetch('/api/heatmap')
-        if (!res.ok) throw new Error('Heatmap fetch failed')
-        const data = await res.json()
- 
-        // Filter to days that actually had sessions
-        const records: HeatmapDay[] = (data?.grid ?? []).filter(
-          (d: HeatmapDay) => d.sessionCount > 0
-        )
- 
-        if (records.length === 0) {
-          setLoading(false)
-          return
-        }
+  const pendingResult = useSessionStore((s) => s.pendingResult)
 
-        const recordsMap = new Map(records.map(r => [r.date, r]))
-        const now = new Date()
-        const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`
-      
-      
-        // Streak
-        let streak = 0
-        const cursor = new Date(todayStr + 'T00:00:00')
- 
-        while (true) {
-          const dateStr = `${cursor.getFullYear()}-${String(cursor.getMonth() + 1).padStart(2, '0')}-${String(cursor.getDate()).padStart(2, '0')}`
-          const record = recordsMap.get(dateStr)
- 
-          if (record && record.sessionCount > 0) {
-            streak++
-            cursor.setDate(cursor.getDate() - 1)
-          } else if (dateStr === todayStr) {
-            // No session today yet — still check yesterday for an ongoing streak
-            cursor.setDate(cursor.getDate() - 1)
-          } else {
-            break
-          }
-        }
+  const fetchStats = useCallback(async () => {
+    setLoading(true)
+    try {
+      const res = await fetch('/api/heatmap')
+      if (!res.ok) throw new Error('Heatmap fetch failed')
+      const data = await res.json()
 
-        // 7-day window
-        const sevenDaysAgo = new Date(now)
-        sevenDaysAgo.setDate(now.getDate() - 7)
-        const sevenDaysAgoStr = `${sevenDaysAgo.getFullYear()}-${String(sevenDaysAgo.getMonth() + 1).padStart(2, '0')}-${String(sevenDaysAgo.getDate()).padStart(2, '0')}`
+      const records: HeatmapDay[] = (data?.grid ?? []).filter(
+        (d: HeatmapDay) => d.sessionCount > 0
+      )
 
-        const weekRecords = records.filter(r => r.date >= sevenDaysAgoStr)
-
-        let weeklyFocusMinutes = 0
-        let sessionCount = 0
-        let totalWeightedScore = 0
-
-        weekRecords.forEach(r => {
-          weeklyFocusMinutes += r.totalFocusMinutes
-          sessionCount += r.sessionCount
-          totalWeightedScore += r.avgFocusScore * r.sessionCount
-        })
-
-        const avgFocusScore = sessionCount > 0
-          ? Math.round(totalWeightedScore / sessionCount)
-          : 0
-
-        // forgeHeat: blend of avg focus quality and volume (max 600 mins/week = full heat)
-        const timeFactor = Math.min(1, weeklyFocusMinutes / 600)
-        const forgeHeat = Math.round((avgFocusScore * 0.5) + (timeFactor * 50))
-
-        setStats({ streak, weeklyFocusMinutes, avgFocusScore, sessionCount, forgeHeat })
-      } catch (err) {
-        console.error('ForgePanel fetch error:', err)
-      } finally {
-        setLoading(false)
+      if (records.length === 0) {
+        setStats({ streak: 0, weeklyFocusMinutes: 0, avgFocusScore: 0, sessionCount: 0, forgeHeat: 0 })
+        return
       }
+
+      const recordsMap = new Map(records.map(r => [r.date, r]))
+      const now = new Date()
+      const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`
+
+      let streak = 0
+      const cursor = new Date(todayStr + 'T00:00:00')
+      while (true) {
+        const dateStr = `${cursor.getFullYear()}-${String(cursor.getMonth() + 1).padStart(2, '0')}-${String(cursor.getDate()).padStart(2, '0')}`
+        const record = recordsMap.get(dateStr)
+        if (record && record.sessionCount > 0) {
+          streak++
+          cursor.setDate(cursor.getDate() - 1)
+        } else if (dateStr === todayStr) {
+          cursor.setDate(cursor.getDate() - 1)
+        } else {
+          break
+        }
+      }
+
+      const sevenDaysAgo = new Date(now)
+      sevenDaysAgo.setDate(now.getDate() - 7)
+      const sevenDaysAgoStr = `${sevenDaysAgo.getFullYear()}-${String(sevenDaysAgo.getMonth() + 1).padStart(2, '0')}-${String(sevenDaysAgo.getDate()).padStart(2, '0')}`
+
+      const weekRecords = records.filter(r => r.date >= sevenDaysAgoStr)
+
+      let weeklyFocusMinutes = 0
+      let sessionCount = 0
+      let totalWeightedScore = 0
+
+      weekRecords.forEach(r => {
+        weeklyFocusMinutes += r.totalFocusMinutes
+        sessionCount += r.sessionCount
+        totalWeightedScore += r.avgFocusScore * r.sessionCount
+      })
+
+      const avgFocusScore = sessionCount > 0 ? Math.round(totalWeightedScore / sessionCount) : 0
+      const timeFactor = Math.min(1, weeklyFocusMinutes / 600)
+      const forgeHeat = Math.round((avgFocusScore * 0.5) + (timeFactor * 50))
+
+      setStats({ streak, weeklyFocusMinutes, avgFocusScore, sessionCount, forgeHeat })
+    } catch (err) {
+      console.error('ForgePanel fetch error:', err)
+    } finally {
+      setLoading(false)
     }
-  
-    fetchStats()
   }, [])
-  
+
+  useEffect(() => {
+    if (!pendingResult) fetchStats()
+  }, [pendingResult, fetchStats])
+
   const { streak, weeklyFocusMinutes, avgFocusScore, sessionCount, forgeHeat } = stats
+  const tier = getForgeTier(forgeHeat, streak)
 
   const hours = Math.floor(weeklyFocusMinutes / 60)
   const minutes = weeklyFocusMinutes % 60
   const formattedTime = hours > 0 ? `${hours}h ${minutes}m` : `${minutes}m`
-
-  // Flame colour shifts with heat
-  const flameTop = forgeHeat > 70 ? '#FFFAAA' : forgeHeat > 40 ? '#FF6010' : '#884400'
-  const flameMid = forgeHeat > 70 ? '#FFD040' : forgeHeat > 40 ? '#EF6010' : '#552200'
-  const flameOuter = forgeHeat > 70 ? '#FF6010' : forgeHeat > 40 ? '#C03008' : '#331100'
 
   return (
     <div style={{
@@ -125,8 +115,28 @@ export default function ForgePanel() {
       background: 'radial-gradient(ellipse 300px 260px at 50% 38%, rgba(160,55,8,0.18) 0%, transparent 65%)',
     }}>
 
-      {/* Arch + Flame */}
+      <style>{`
+        @keyframes forgeAuraPulse {
+          0%, 100% { opacity: 0.35; transform: translate(-50%, -50%) scale(1); }
+          50% { opacity: 0.7; transform: translate(-50%, -50%) scale(1.08); }
+        }
+      `}</style>
+
       <div style={{ position: 'relative', width: '200px', paddingTop: '55px', margin: '0 auto 14px' }}>
+
+        {/* Aura ring — only appears once the streak crosses the threshold,
+            regardless of current heat, so a long streak still reads as an
+            achievement even on a lower-heat day */}
+        {tier.hasAura && !loading && (
+          <div style={{
+            position: 'absolute', top: '50%', left: '50%',
+            width: '220px', height: '220px', borderRadius: '50%',
+            background: `radial-gradient(circle, ${tier.glow}33 0%, transparent 70%)`,
+            animation: 'forgeAuraPulse 2.8s ease-in-out infinite',
+            pointerEvents: 'none', zIndex: 0,
+          }} />
+        )}
+
         <div style={{
           position: 'absolute', top: 0, left: '50%', transform: 'translateX(-50%)',
           width: '95%', height: '100%', borderRadius: '100px 100px 0 0',
@@ -141,19 +151,19 @@ export default function ForgePanel() {
           <div style={{
             position: 'absolute', bottom: 20, left: '13px', width: '74px', height: '118px',
             borderRadius: '50% 50% 25% 25%/65% 65% 35% 35%',
-            background: `linear-gradient(180deg, ${flameOuter}, #220800)`,
+            background: `linear-gradient(180deg, ${tier.flameOuter}, #220800)`,
             transformOrigin: 'bottom center', transition: 'background 1s ease',
           }} />
           <div style={{
             position: 'absolute', bottom: 20, left: '25px', width: '50px', height: '86px',
             borderRadius: '50% 50% 25% 25%/65% 65% 35% 35%',
-            background: `linear-gradient(180deg, ${flameMid}, ${flameOuter})`,
+            background: `linear-gradient(180deg, ${tier.flameMid}, ${tier.flameOuter})`,
             transformOrigin: 'bottom center', transition: 'background 1s ease',
           }} />
           <div style={{
             position: 'absolute', bottom: 25, left: '36px', width: '28px', height: '54px',
             borderRadius: '50% 50% 25% 25%/65% 65% 35% 35%',
-            background: `linear-gradient(180deg, ${flameTop}, ${flameMid})`,
+            background: `linear-gradient(180deg, ${tier.flameTop}, ${tier.flameMid})`,
             transformOrigin: 'bottom center', transition: 'background 1s ease',
           }} />
           <div style={{
@@ -165,7 +175,6 @@ export default function ForgePanel() {
         </div>
       </div>
 
-      {/* Heat number */}
       <div style={{
         fontSize: '42px', fontWeight: 800,
         color: forgeHeat > 0 ? '#fff' : 'var(--text-faint)',
@@ -178,8 +187,15 @@ export default function ForgePanel() {
       <div style={{ fontSize: '10px', color: 'var(--text-faint)', marginTop: '4px', position: 'relative', zIndex: 2 }}>
         7-day forge heat
       </div>
+      {!loading && forgeHeat > 0 && (
+        <div style={{
+          fontSize: '10px', fontWeight: 600, color: tier.glow,
+          marginTop: '4px', position: 'relative', zIndex: 2,
+        }}>
+          {tier.hasAura ? '✨ ' : ''}{tier.label}
+        </div>
+      )}
 
-      {/* Badge */}
       <div style={{
         display: 'inline-flex', alignItems: 'center', gap: '5px',
         padding: '4px 14px', borderRadius: '20px',
@@ -190,20 +206,18 @@ export default function ForgePanel() {
         {loading ? '⚒ Loading...' : streak > 0 ? `🔥 ${streak} day streak` : '⚒ No streak yet'}
       </div>
 
-      {/* Divider */}
       <div style={{ display: 'flex', alignItems: 'center', gap: '8px', width: '100%', marginBottom: '14px' }}>
         <div style={{ flex: 1, height: '1px', background: 'linear-gradient(90deg, transparent, rgba(180,80,10,0.25), transparent)' }} />
         <div style={{ fontSize: '8px', color: 'rgba(180,80,10,0.45)', letterSpacing: '.08em', textTransform: 'uppercase' }}>Stats</div>
         <div style={{ flex: 1, height: '1px', background: 'linear-gradient(90deg, rgba(180,80,10,0.25), transparent)' }} />
       </div>
 
-      {/* Stats grid */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', width: '100%' }}>
         {[
           { val: loading ? '--' : formattedTime, label: 'This week', orange: false },
           { val: loading ? '--' : `${streak} 🔥`, label: 'Streak', orange: true },
           { val: loading ? '--' : `${avgFocusScore}%`, label: 'Avg focus', orange: false },
-          { val: loading ? '--' : String(sessionCount), label: 'Weekly Sessions', orange: false },
+          { val: loading ? '--' : String(sessionCount), label: 'Weekly sessions', orange: false },
         ].map(stat => (
           <div key={stat.label} style={{
             background: 'var(--bg-card)', border: '1px solid var(--border-subtle)',
