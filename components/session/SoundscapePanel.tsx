@@ -11,7 +11,7 @@ interface Props {
 
 export default function SoundscapePanel({ status }: Props) {
   const [isOpen, setIsOpen] = useState(false)
-  const { currentSound, volume, selectSound, changeVolume } = useSoundscape(status)
+  const { currentSound, volume, selectSound, changeVolume } = useSoundscape()
 
   return (
     <div style={{ marginTop: '8px' }}>
