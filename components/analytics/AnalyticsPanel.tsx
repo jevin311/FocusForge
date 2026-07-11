@@ -1,5 +1,6 @@
 'use client'
 import { useEffect, useState } from 'react'
+import { getForgeTier } from '@/lib/forgeTier'
 
 interface Session {
   id: string
@@ -190,21 +191,29 @@ export default function AnalyticsPanel() {
         </div>
       ) : (
         <>
-          <div style={{
-            background: 'radial-gradient(ellipse at center, rgba(249,115,22,0.08) 0%, var(--bg-card) 70%)',
-            border: '1px solid rgba(249,115,22,0.2)',
-            borderRadius: '14px', padding: '20px', textAlign: 'center',
-          }}>
-            <div style={{
-              fontSize: '38px', fontWeight: 800, color: '#fff', letterSpacing: '-1.5px',
-              textShadow: '0 0 24px rgba(220,100,20,0.35)',
-            }}>
-              {stats.avgFocusScore}
-            </div>
-            <div style={{ fontSize: '9px', color: 'var(--text-faint)', textTransform: 'uppercase', letterSpacing: '.08em', marginTop: '4px' }}>
-              Lifetime avg focus score
-            </div>
-          </div>
+          {(() => {
+            const tier = getForgeTier(stats.avgFocusScore, stats.streak)
+            return (
+              <div style={{
+                background: 'radial-gradient(ellipse at center, rgba(249,115,22,0.08) 0%, var(--bg-card) 70%)',
+                border: '1px solid rgba(249,115,22,0.2)',
+                borderRadius: '14px', padding: '20px', textAlign: 'center',
+              }}>
+                <div style={{
+                  fontSize: '38px', fontWeight: 800, color: '#fff', letterSpacing: '-1.5px',
+                  textShadow: '0 0 24px rgba(220,100,20,0.35)',
+                }}>
+                  {stats.avgFocusScore}
+                </div>
+                <div style={{ fontSize: '9px', color: 'var(--text-faint)', textTransform: 'uppercase', letterSpacing: '.08em', marginTop: '4px' }}>
+                  Lifetime avg focus score
+                </div>
+                <div style={{ fontSize: '10px', fontWeight: 600, color: tier.glow, marginTop: '8px' }}>
+                  {tier.hasAura ? '✨ ' : ''}{tier.label}
+                </div>
+              </div>
+            )
+          })()}
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
             <StatCard
