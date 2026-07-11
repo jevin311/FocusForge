@@ -32,16 +32,16 @@ function calculateStreak(sessions: Session[]): number {
       return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
     })
   )
- 
+
   if (uniqueDates.size === 0) return 0
- 
+
   // Use local date to avoid timezone shifting streak by a day
   const todayLocal = new Date()
   const todayStr = `${todayLocal.getFullYear()}-${String(todayLocal.getMonth() + 1).padStart(2, '0')}-${String(todayLocal.getDate()).padStart(2, '0')}`
- 
+
   let streak = 0
   const cursor = new Date(todayStr + 'T00:00:00')
- 
+
   while (true) {
     const dateStr = `${cursor.getFullYear()}-${String(cursor.getMonth() + 1).padStart(2, '0')}-${String(cursor.getDate()).padStart(2, '0')}`
     if (uniqueDates.has(dateStr)) {
@@ -54,7 +54,7 @@ function calculateStreak(sessions: Session[]): number {
       break
     }
   }
- 
+
   return streak
 }
 
@@ -63,7 +63,7 @@ const MODE_COLOUR: Record<string, string> = {
   'research': '#6ee7b7',
   'practice': '#fcd34d',
 }
- 
+
 const MODE_LABEL: Record<string, string> = {
   'deep-focus': 'Deep Focus',
   'research': 'Research',
@@ -76,7 +76,7 @@ function formatMins(mins: number): string {
   if (h > 0) return `${h}h ${m}m`
   return `${m}m`
 }
- 
+
 function StatCard({ label, value, sub }: { label: string; value: string; sub?: string }) {
   return (
     <div style={{
@@ -97,11 +97,11 @@ function StatCard({ label, value, sub }: { label: string; value: string; sub?: s
     </div>
   )
 }
- 
+
 export default function AnalyticsPanel() {
   const [stats, setStats] = useState<Stats | null>(null)
   const [loading, setLoading] = useState(true)
- 
+
   useEffect(() => {
     fetch('/api/sessions')
       .then(r => r.json())
@@ -110,11 +110,11 @@ export default function AnalyticsPanel() {
           setLoading(false)
           return
         }
- 
+
         const today = new Date()
         const weekAgo = new Date(today)
         weekAgo.setDate(today.getDate() - 7)
- 
+
         const totalMins = Math.round(sessions.reduce((s, x) => s + x.duration_ms, 0) / 60000)
         const daysStudied = new Set(sessions.map(s => s.created_at.slice(0, 10))).size
         const avgFocusScore = Math.round(
@@ -128,7 +128,7 @@ export default function AnalyticsPanel() {
         const commitmentRate = Math.round(
           (sessions.filter(s => s.commitment_met).length / sessions.length) * 100
         )
- 
+
         // Best day by total focus minutes
         const byDay: Record<string, number> = {}
         sessions.forEach(s => {
@@ -136,13 +136,13 @@ export default function AnalyticsPanel() {
           byDay[d] = (byDay[d] ?? 0) + s.duration_ms / 60000
         })
         const bestDayEntry = Object.entries(byDay).sort((a, b) => b[1] - a[1])[0]
- 
+
         // Mode breakdown by session count
         const modeBreakdown: Record<string, number> = {}
         sessions.forEach(s => {
           modeBreakdown[s.mode] = (modeBreakdown[s.mode] ?? 0) + 1
         })
- 
+
         setStats({
           totalMins, daysStudied, avgFocusScore, totalSessions: sessions.length,
           weekMins, streak: calculateStreak(sessions),
@@ -159,17 +159,17 @@ export default function AnalyticsPanel() {
   const avgSessionMins = stats && stats.totalSessions > 0
     ? Math.round(stats.totalMins / stats.totalSessions)
     : 0
- 
+
   const weekHours = Math.floor((stats?.weekMins ?? 0) / 60)
   const weekMinsRem = (stats?.weekMins ?? 0) % 60
- 
+
   const bestDayFormatted = stats?.bestDay
     ? new Date(stats.bestDay + 'T00:00:00').toLocaleDateString('en-SG', { day: 'numeric', month: 'short' })
     : null
- 
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
- 
+
       {/* Section label */}
       <div style={{
         fontSize: '10px', fontWeight: 600, color: 'var(--text-faint)',
@@ -177,7 +177,7 @@ export default function AnalyticsPanel() {
       }}>
         All Time
       </div>
- 
+
       {loading ? (
         <div style={{ color: 'var(--text-faint)', fontSize: '12px', padding: '20px 0', textAlign: 'center' }}>
           Loading stats...
@@ -217,7 +217,7 @@ export default function AnalyticsPanel() {
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
             <StatCard
-              label="Avg. session"
+              label="Avg mins per session"
               value={formatMins(avgSessionMins)}
               sub={`${stats.totalSessions} total`}
             />
@@ -245,7 +245,7 @@ export default function AnalyticsPanel() {
               value={String(stats.daysStudied)}
             />
           </div>
- 
+
           {/* Mode breakdown */}
           {Object.keys(stats.modeBreakdown).length > 0 && (
             <div style={{ marginTop: '4px' }}>
