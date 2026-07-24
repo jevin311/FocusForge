@@ -1,5 +1,7 @@
 'use client'
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useMemo } from 'react'
+import { getForgeTier } from '@/lib/forgeTier'
+import ForgeFlameBackdrop from './ForgeFlameBackdrop'
 
 interface Session {
   id: string
@@ -76,6 +78,37 @@ function formatMins(mins: number): string {
  
 function localDateStr(date: Date): string {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
+}
+
+function getMonthContainerStyle(tierLabel: string) {
+  if (tierLabel === 'Blazing') {
+    return {
+      border: '1px solid rgba(249,115,22,0.5)',
+      background: 'radial-gradient(ellipse 500px 200px at 50% -10%, rgba(249,115,22,0.12) 0%, transparent 70%)',
+      boxShadow: '0 0 50px rgba(249,115,22,0.08)',
+    }
+  }
+  if (tierLabel === 'Kindled') {
+    return {
+      border: '1px solid rgba(194,65,12,0.35)',
+      background: 'radial-gradient(ellipse 500px 200px at 50% -10%, rgba(194,65,12,0.07) 0%, transparent 70%)',
+      boxShadow: 'none',
+    }
+  }
+  // Smoldering / no data yet — same understated look the calendar has today
+  return {
+    border: '1px solid var(--border-subtle)',
+    background: 'transparent',
+    boxShadow: 'none',
+  }
+}
+
+function getMonthCaption(tierLabel: string, activeDays: number, daysElapsed: number, hasData: boolean): string {
+  if (!hasData) return 'No sessions yet this month — start one to light the forge.'
+  const dayPart = `${activeDays}/${daysElapsed} days active`
+  if (tierLabel === 'Blazing') return `🔥 Blazing month — ${dayPart}`
+  if (tierLabel === 'Kindled') return `Kindled — ${dayPart}, keep it up`
+  return `Smoldering — ${dayPart}`
 }
 
 
@@ -163,7 +196,41 @@ export default function AnalyticsCalendar({ selectedDate, onSelectDate }: Props)
   const firstDay = new Date(year, month, 1).getDay()      // 0 = Sun
   const daysInMonth = new Date(year, month + 1, 0).getDate()
   const monthName = currentMonth.toLocaleString('default', { month: 'long', year: 'numeric' })
- 
+  
+  const monthStats = useMemo(() => {
+    const today = new Date()
+    const isFutureMonth = year > today.getFullYear() || (year === today.getFullYear() && month > today.getMonth())
+    const isCurrentMonth = year === today.getFullYear() && month === today.getMonth()
+    const daysElapsed = isFutureMonth ? 0 : isCurrentMonth ? today.getDate() : daysInMonth
+
+    let activeDays = 0
+    let totalWeightedScore = 0
+    let totalSessionCount = 0
+
+    for (let d = 1; d <= daysInMonth; d++) {
+      const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`
+      const heat = heatmap[dateStr]
+      if (heat && heat.sessionCount > 0) {
+        activeDays++
+        totalWeightedScore += heat.avgFocusScore * heat.sessionCount
+        totalSessionCount += heat.sessionCount
+      }
+    }
+
+    const avgScore = totalSessionCount > 0 ? Math.round(totalWeightedScore / totalSessionCount) : 0
+    const activityRatio = daysElapsed > 0 ? Math.min(1, activeDays / daysElapsed) : 0
+    const monthHeat = daysElapsed > 0 ? Math.round(avgScore * 0.5 + activityRatio * 100 * 0.5) : 0
+    const hasData = daysElapsed > 0 && activeDays > 0
+
+    return { activeDays, daysElapsed, avgScore, monthHeat, hasData }
+  }, [heatmap, year, month, daysInMonth])
+
+  // streak passed as 0 — the aura-ring concept belongs to "today's ongoing
+  // streak", which doesn't mean anything for an arbitrary past/future month
+  const monthTier = getForgeTier(monthStats.monthHeat, 0)
+  const containerStyle = getMonthContainerStyle(monthTier.label)
+  const monthCaption = getMonthCaption(monthTier.label, monthStats.activeDays, monthStats.daysElapsed, monthStats.hasData)
+
   const days: Array<{ day: number; date: string } | null> = []
   for (let i = 0; i < firstDay; i++) days.push(null)
   for (let i = 1; i <= daysInMonth; i++) {
@@ -194,114 +261,154 @@ export default function AnalyticsCalendar({ selectedDate, onSelectDate }: Props)
  
   return (
     <div>
+
+      <style>{`
+        @keyframes monthGlowPulse {
+          0%, 100% { opacity: 0.5; transform: scaleY(1); }
+          50% { opacity: 0.85; transform: scaleY(1.20); }
+        }
+      `}</style>
+
+      {/* Themed container — border/background/glow shift with the month's
+          activity + score tier, same 3-stage scale as ForgePanel */}
+      <div style={{
+        borderRadius: '18px',
+        padding: '22px',
+        position: 'relative',
+        overflow: 'hidden',
+        transition: 'all 0.6s ease',
+        ...containerStyle,
+      }}>
+
+        {monthTier.label === 'Blazing' && (
+          <div style={{
+            position: 'absolute', top: '0', left: '0',
+            width: '100%', height: '150px', 
+            background: `linear-gradient(to bottom, ${monthTier.glow}55 0%, transparent 70%)`,
+            animation: 'monthGlowPulse 3s ease-in-out infinite',
+            pointerEvents: 'none', zIndex: 0,
+          }} />
+        )}
+
+        {monthTier.label === 'Blazing' && <ForgeFlameBackdrop />}
  
       {/* Calendar header  */}
       <div style={{
         display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-        marginBottom: '20px',
+        marginBottom: '20px', position: 'relative', zIndex: 1,
       }}>
-        <h2 style={{ fontSize: '20px', fontWeight: 700, color: '#fff', margin: 0 }}>
-          {monthName}
-        </h2>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <span style={{ fontSize: '11px', color: 'var(--text-faint)' }}>
-            Click a day to see details
-          </span>
-          <div style={{ display: 'flex', gap: '4px' }}>
-            <button
-              onClick={() => setCurrentMonth(new Date(year, month - 1, 1))}
-              style={{
-                background: 'rgba(255,255,255,0.05)', border: '1px solid var(--border-subtle)',
-                color: 'var(--text-muted)', width: '30px', height: '30px',
-                borderRadius: '8px', cursor: 'pointer', fontSize: '14px',
-              }}
-            >‹</button>
-            <button
-              onClick={() => setCurrentMonth(new Date(year, month + 1, 1))}
-              style={{
-                background: 'rgba(255,255,255,0.05)', border: '1px solid var(--border-subtle)',
-                color: 'var(--text-muted)', width: '30px', height: '30px',
-                borderRadius: '8px', cursor: 'pointer', fontSize: '14px',
-              }}
-            >›</button>
+        <div>
+          <h2 style={{ fontSize: '20px', fontWeight: 700, color: '#fff', margin: 0 }}>
+            {monthName}
+          </h2>
+          <div style={{
+              fontSize: '11px', fontWeight: 600, color: monthTier.glow,
+              marginTop: '5px',
+            }}>
+              {monthCaption}
+            </div>
+          </div>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <span style={{ fontSize: '11px', color: 'var(--text-faint)' }}>
+              Click a day to see details
+            </span>
+            <div style={{ display: 'flex', gap: '4px' }}>
+              <button
+                onClick={() => setCurrentMonth(new Date(year, month - 1, 1))}
+                style={{
+                  background: 'rgba(255,255,255,0.05)', border: '1px solid var(--border-subtle)',
+                  color: 'var(--text-muted)', width: '30px', height: '30px',
+                  borderRadius: '8px', cursor: 'pointer', fontSize: '14px',
+                }}
+              >‹</button>
+              <button
+                onClick={() => setCurrentMonth(new Date(year, month + 1, 1))}
+                style={{
+                  background: 'rgba(255,255,255,0.05)', border: '1px solid var(--border-subtle)',
+                  color: 'var(--text-muted)', width: '30px', height: '30px',
+                  borderRadius: '8px', cursor: 'pointer', fontSize: '14px',
+                }}
+              >›</button>
+            </div>
           </div>
         </div>
-      </div>
  
-      {/*Day-of-week labels*/}
-      <div style={{
-        display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)',
-        gap: '10px', marginBottom: '8px', textAlign: 'center',
-      }}>
-        {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(d => (
-          <div key={d} style={{ fontSize: '10px', color: 'var(--text-faint)', fontWeight: 600 }}>
-            {d}
-          </div>
-        ))}
-      </div>
- 
-      {/*Calendar grid */}
-      <div style={{
-        display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)',
-        gap: '10px', gridAutoRows: '64px',
-      }}>
-        {days.map((d, i) => {
-          if (!d) return <div key={`empty-${i}`} />
- 
-          const isSelected = d.date === selectedDate
-          const isToday = d.date === todayStr
-          const heat = heatmap[d.date]
-          const score = heat?.avgFocusScore ?? 0
-          const hStyle = getHeatStyle(score, isSelected, isToday)
- 
-          return (
-            <div
-              key={d.date}
-              onClick={() => onSelectDate(d.date)}
-              style={{
-                ...hStyle,
-                borderRadius: '12px',
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
-                justifyContent: 'center',
-                cursor: 'pointer',
-                transition: 'all 0.15s ease',
-                transform: isSelected ? 'scale(1.04)' : 'scale(1)',
-                position: 'relative',
-              }}
-            >
-              <span style={{
-                fontSize: '15px', fontWeight: isToday ? 700 : 500,
-                color: isToday ? '#f97316' : '#fff',
-              }}>
-                {d.day}
-              </span>
-              {score > 0 && (
-                <span style={{
-                  fontSize: '9px',
-                  color: isSelected ? 'rgba(255,255,255,0.9)' : 'rgba(255,255,255,0.5)',
-                  marginTop: '2px',
-                }}>
-                  {score}°
-                </span>
-              )}
-              {heat && heat.sessionCount > 0 && (
-                <div style={{
-                  position: 'absolute', bottom: '5px',
-                  display: 'flex', gap: '2px',
-                }}>
-                  {Array.from({ length: Math.min(heat.sessionCount, 4) }).map((_, j) => (
-                    <div key={j} style={{
-                      width: '3px', height: '3px', borderRadius: '50%',
-                      background: 'rgba(255,255,255,0.4)',
-                    }} />
-                  ))}
-                </div>
-              )}
+        {/*Day-of-week labels*/}
+        <div style={{
+          display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)',
+          gap: '10px', marginBottom: '8px', textAlign: 'center',
+        }}>
+          {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(d => (
+            <div key={d} style={{ fontSize: '10px', color: 'var(--text-faint)', fontWeight: 600 }}>
+              {d}
             </div>
-          )
-        })}
+          ))}
+        </div>
+ 
+        {/*Calendar grid */}
+        <div style={{
+          display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)',
+          gap: '10px', gridAutoRows: '64px', position: 'relative', zIndex: 1,
+        }}>
+          {days.map((d, i) => {
+            if (!d) return <div key={`empty-${i}`} />
+  
+            const isSelected = d.date === selectedDate
+            const isToday = d.date === todayStr
+            const heat = heatmap[d.date]
+            const score = heat?.avgFocusScore ?? 0
+            const hStyle = getHeatStyle(score, isSelected, isToday)
+ 
+            return (
+              <div
+                key={d.date}
+                onClick={() => onSelectDate(d.date)}
+                style={{
+                  ...hStyle,
+                  borderRadius: '12px',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  cursor: 'pointer',
+                  transition: 'all 0.15s ease',
+                  transform: isSelected ? 'scale(1.04)' : 'scale(1)',
+                  position: 'relative',
+                }}
+              >
+                <span style={{
+                  fontSize: '15px', fontWeight: isToday ? 700 : 500,
+                  color: isToday ? '#f97316' : '#fff',
+                }}>
+                  {d.day}
+                </span>
+                {score > 0 && (
+                  <span style={{
+                    fontSize: '9px',
+                    color: isSelected ? 'rgba(255,255,255,0.9)' : 'rgba(255,255,255,0.5)',
+                    marginTop: '2px',
+                  }}>
+                    {score}°
+                  </span>
+                )}
+                {heat && heat.sessionCount > 0 && (
+                  <div style={{
+                    position: 'absolute', bottom: '5px',
+                    display: 'flex', gap: '2px',
+                  }}>
+                    {Array.from({ length: Math.min(heat.sessionCount, 4) }).map((_, j) => (
+                      <div key={j} style={{
+                        width: '3px', height: '3px', borderRadius: '50%',
+                        background: 'rgba(255,255,255,0.4)',
+                      }} />
+                    ))}
+                  </div>
+                )}
+              </div>
+            )
+          })}
+        </div>
       </div>
  
       {/* Selected-day detail*/}
