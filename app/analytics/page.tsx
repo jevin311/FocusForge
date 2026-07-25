@@ -16,7 +16,11 @@ function StreakHeatmap() {
   const [grid, setGrid] = useState<HeatDay[]>([])
 
   useEffect(() => {
-    fetch('/api/heatmap')
+    // Computed in the browser, so this always matches the user's real
+    // local date — unlike leaving it to the server, which runs in UTC on Vercel.
+    const d = new Date()
+    const todayStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+    fetch(`/api/heatmap?date=${todayStr}`)
       .then(r => r.json())
       .then(data => { if (data?.grid) setGrid(data.grid) })
       .catch(() => { })

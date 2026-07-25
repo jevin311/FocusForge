@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServerSupabaseClient } from '@/lib/supabase/server'
+import { getSingaporeDateStr } from '@/lib/dateSingapore'
 
 async function getAuthenticatedUser() {
   const supabase = await createServerSupabaseClient()
@@ -30,11 +31,8 @@ export async function GET(req: NextRequest) {
   const endDateParam = searchParams.get('date')
 
   const endDate = endDateParam && /^\d{4}-\d{2}-\d{2}$/.test(endDateParam)
-  ? endDateParam
-  : (() => {
-      const d = new Date()
-      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
-    })()
+    ? endDateParam
+    : getSingaporeDateStr()
 
   const startDate = new Date(endDate + 'T00:00:00')  // parse as local midnight
   startDate.setDate(startDate.getDate() - HEATMAP_DAYS + 1)
