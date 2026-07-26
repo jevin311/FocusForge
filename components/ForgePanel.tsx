@@ -35,7 +35,10 @@ export default function ForgePanel() {
   const fetchStats = useCallback(async () => {
     setLoading(true)
     try {
-      const res = await fetch('/api/heatmap')
+      const now = new Date()
+      const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`
+
+      const res = await fetch(`/api/heatmap?date=${todayStr}`)
       if (!res.ok) throw new Error('Heatmap fetch failed')
       const data = await res.json()
 
@@ -49,8 +52,7 @@ export default function ForgePanel() {
       }
 
       const recordsMap = new Map(records.map(r => [r.date, r]))
-      const now = new Date()
-      const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`
+      
 
       let streak = 0
       const cursor = new Date(todayStr + 'T00:00:00')

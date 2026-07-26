@@ -123,27 +123,6 @@ export default function AnalyticsCalendar({ selectedDate, onSelectDate }: Props)
  
   const todayStr = localDateStr(new Date())
  
-  // Load heatmap (84-day window ending today)
-  useEffect(() => {
-    fetch('/api/heatmap')
-      .then(r => r.json())
-      .then((data) => {
-        if (!data?.grid) return
-        const map: Record<string, DayHeat> = {}
-        for (const day of data.grid) {
-          if (day.sessionCount > 0) {
-            map[day.date] = {
-              avgFocusScore: day.avgFocusScore,
-              sessionCount: day.sessionCount,
-              totalFocusMinutes: day.totalFocusMinutes,
-            }
-          }
-        }
-        setHeatmap(map)
-      })
-      .catch(() => {})
-      .finally(() => setLoadingHeat(false))
-  }, [])
  
   // Load all sessions once for the detail panel
   useEffect(() => {
